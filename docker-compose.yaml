@@ -1,0 +1,212 @@
+networks:
+  project-net:
+    driver: bridge
+
+services:
+  metastore:
+    image: metastore
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/hive.dockerfile
+    depends_on:
+      - postgres
+    container_name: metastore
+    environment:
+      DEFAULT_FS: "s3a://tables"
+      HIVE_WAREHOUSE_PATH: "s3a://tables"
+      HADOOP_CLASSPATH: /opt/hadoop/share/hadoop/tools/lib/*
+      DB_DRIVER: postgres
+      SERVICE_NAME: 'metastore'
+      SERVICE_OPTS: >
+        -Xmx1G
+        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
+        -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore_db
+        -Djavax.jdo.option.ConnectionUserName=postgres
+        -Djavax.jdo.option.ConnectionPassword=postgres
+    ports:
+        - '9083:9083'
+    volumes:
+        - ./docker-data/warehouse:/opt/hive/data/warehouse
+        # Mount local jars to a temporary staging area (Read-Only)
+        - ./jars:/tmp/ext-jars:ro
+    networks:
+      - project-net
+    env_file:
+      - ./.env
+
+  hiveserver2:
+    image: hiveserver2
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/hive.dockerfile
+    depends_on:
+      - metastore
+    restart: unless-stopped
+    container_name: hiveserver2
+    environment:
+      HADOOP_CLASSPATH: /opt/hadoop/share/hadoop/tools/lib/*
+      HIVE_SERVER2_THRIFT_PORT: 10000
+      IS_RESUME: 'true'
+      SERVICE_NAME: 'hiveserver2'
+      SERVICE_OPTS: >
+        -Xmx1G
+        -Dhive.metastore.uris=thrift://metastore:9083
+    env_file:
+      - ./.env
+    ports:
+      - '10000:10000'
+      - '10002:10002'
+    volumes:
+      - ./docker-data/warehouse:/opt/hive/data/warehouse
+      # Mount local jars to a temporary staging area (Read-Only)
+      - ./jars:/tmp/ext-jars:ro
+    networks:
+      - project-net
+    
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_REGION_NAME=us-east-1
+      - MINIO_REGION=us-east-1
+    networks:
+      - project-net
+    ports:
+      - "9001:9001"
+    command: [ "server", "/data", "--console-address", ":9001" ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ./docker-data/minio:/data
+
+  mc:
+    depends_on:
+      minio:
+        condition: service_healthy
+    image: minio/mc
+    container_name: mc
+    networks:
+      - project-net
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: |
+      /bin/sh -c "
+      until (/usr/bin/mc alias set minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc mb --ignore-existing minio/tables;
+      /usr/bin/mc mb --ignore-existing minio/files;
+      /usr/bin/mc policy set public minio/tables;
+      /usr/bin/mc policy set public minio/files;
+      tail -f /dev/null
+      "
+
+  postgres:
+    image: postgres:15-bookworm
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=metastore_db
+    networks:
+      - project-net
+    volumes:
+      - ./docker-data/postgres:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  master:
+    container_name: master
+    image: spark # Dùng để đặt tên cho image build
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/spark.dockerfile
+    networks:
+      - project-net
+    environment:
+      - MODE=master
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1g
+  
+  worker1:
+    container_name: worker1
+    image: spark
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/spark.dockerfile
+    networks:
+      - project-net
+    environment:
+      - MODE=worker
+      - MASTER_URL=spark://master:7077
+    depends_on:
+      master:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1g
+  
+  worker2:
+    container_name: worker2
+    image: spark
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/spark.dockerfile
+    networks:
+      - project-net
+    environment:
+      - MODE=worker
+      - MASTER_URL=spark://master:7077
+    depends_on:
+      master:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1g
+  
+  worker3:
+    container_name: worker3
+    image: spark
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/spark.dockerfile
+    networks:
+      - project-net
+    environment:
+      - MODE=worker
+      - MASTER_URL=spark://master:7077
+    depends_on:
+      master:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1g
+  
