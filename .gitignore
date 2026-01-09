@@ -1,1 +1,5 @@
 docker-data
+venv
+*.ipynb
+test.py
+sample
