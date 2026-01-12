@@ -3,3 +3,7 @@ venv
 *.ipynb
 test.py
 sample
+test.json
+*.txt
+!*/requirements.txt
+*.log
