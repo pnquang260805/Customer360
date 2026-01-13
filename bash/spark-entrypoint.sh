@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 mode=$(echo $MODE | tr '[:upper:]' '[:lower:]')
 
