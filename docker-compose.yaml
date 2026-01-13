@@ -90,7 +90,10 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    image: minio/mc
+    image: mymc
+    build: 
+      context: .
+      dockerfile: ./dockerfiles/mc.dockerfile
     container_name: mc
     networks:
       - project-net
@@ -98,15 +101,10 @@ services:
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=password
       - AWS_REGION=us-east-1
-    entrypoint: |
-      /bin/sh -c "
-      until (/usr/bin/mc alias set minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
-      /usr/bin/mc mb --ignore-existing minio/tables;
-      /usr/bin/mc mb --ignore-existing minio/files;
-      /usr/bin/mc policy set public minio/tables;
-      /usr/bin/mc policy set public minio/files;
-      tail -f /dev/null
-      "
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_REGION_NAME=us-east-1
+      - MINIO_REGION=us-east-1
 
   postgres:
     image: postgres:15-bookworm
