@@ -1,8 +1,4 @@
 import pymongo
-import inspect
-import functools
-
-from pymongo.collection import Collection
 from typing import List, Any
 
 from interfaces.connector import Connector

@@ -25,10 +25,8 @@ def auto_log(message_prefix=""):
     def logger(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            log.info(f"calling {func.__name__}")
             try:
                 result = func(*args, **kwargs)
-                log.info(f"end {func.__name__}")
                 return result
             except Exception as e:
                 log.error(e)
