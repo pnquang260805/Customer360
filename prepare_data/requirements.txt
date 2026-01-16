@@ -1,0 +1,7 @@
+selenium
+beautifulsoup4
+fake-useragent
+undetected-chromedriver
+pymongo
+faker
+snowflake-id
