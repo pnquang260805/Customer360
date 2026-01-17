@@ -26,6 +26,7 @@ class CellphoneCrawler(Crawler):
                 button = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable((By.CLASS_NAME, "button__show-more-product")))
                 button.click()
+                log.info("Click button")
                 time.sleep(1)
             except (TimeoutException, StaleElementReferenceException):
                 log.info("Done click button")

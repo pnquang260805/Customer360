@@ -3,20 +3,18 @@ from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 
 from services.mongo_connector import MongoConnector
-from services.cellphone_crawler import CellphoneCrawler
-from services.cellphone_extractor import CellphoneExtractor
+from services.cellphones_crawler import CellphoneCrawler
+from services.cellphones_extractor import CellphoneExtractor
 from common.logger import log
 
-def main() -> None:
+
+def exec_crawl(url: str, collection_name) -> None:
     # Base args
     mongo_username = "mongo"
     mongo_password = "mongo"
     mongo_host = "kubernetes.docker.internal"
     mongo_port = 27017
     db_name = "products"
-    collection_name = "cellphones"
-
-    url = "https://cellphones.com.vn/mobile.html"
 
     user_agent = UserAgent()
     agent = user_agent.random
@@ -24,6 +22,7 @@ def main() -> None:
     options = Options()
     # options.add_argument(f"user-agent={agent}")
     # options.add_argument("--headless=new")
+    options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-popup-blocking")
     driver = webdriver.Chrome(options)
@@ -32,9 +31,6 @@ def main() -> None:
     connector = MongoConnector(mongo_host, mongo_port, mongo_username, mongo_password)
     crawler = CellphoneCrawler(driver)
     extractor = CellphoneExtractor()
-
-    # Logic
-    connector.connect()
 
     crawler.set_wait_full_page(True)
     all_products = crawler.crawl(url)
@@ -55,6 +51,3 @@ def main() -> None:
 
     crawler.close()
     connector.disconnect()
-
-if __name__ == "__main__":
-    main()

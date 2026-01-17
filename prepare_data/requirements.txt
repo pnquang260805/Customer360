@@ -5,3 +5,4 @@ undetected-chromedriver
 pymongo
 faker
 snowflake-id
+pandas

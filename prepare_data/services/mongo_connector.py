@@ -1,5 +1,5 @@
 import pymongo
-from typing import List, Any
+from typing import List, Any, Dict
 
 from interfaces.connector import Connector
 from common.logger import log, auto_log
@@ -12,12 +12,13 @@ class MongoConnector(Connector):
         self.port = port
         self.username = username
         self.password = password
+        self._connect()
 
 
     @auto_log()
-    def insert_one(self, db: str, collection:  str, data: dict):
-        db_mongo = self.client[db]
-        coll = db_mongo[collection]
+    def insert_one(self, db_name : str, table_or_collection : str, data : Dict[str, any]):
+        db_mongo = self.client[db_name]
+        coll = db_mongo[table_or_collection]
         inserted_data = coll.insert_one(data)
         log.info(f"Inserted with id: {inserted_data.inserted_id}")
 
@@ -29,7 +30,7 @@ class MongoConnector(Connector):
         log.info(f"Inserted {len(inserted_data.inserted_ids)} documents")
 
     @auto_log()
-    def connect(self):
+    def _connect(self):
         if self.password is not None and self.username is not None:
             url = f"mongodb://{self.username}:{self.password}@{self.host}:{self.port}/"
         else:
@@ -45,4 +46,6 @@ class MongoConnector(Connector):
         self.client.close()
         log.info(f"Closed connection in {self.host}:{self.port}")
 
-        
+
+    def get_client(self):
+        return self.client

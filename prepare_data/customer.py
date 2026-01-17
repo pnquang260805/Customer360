@@ -54,7 +54,6 @@ def main() -> None:
     collection_name = "customers"
 
     connector = MongoConnector(mongo_host, mongo_port, mongo_username, mongo_password)
-    connector.connect()
     for _ in range(random.randint(1, 100)):
         customer = Customer(random.randint(1, 5))
         connector.insert_one(db_name, collection_name, customer.generator())
