@@ -34,12 +34,20 @@ class Customer:
     def __gen_country(self):
         return self.faker.country()
 
+    def __gen_email(self):
+        return self.faker.email()
+
+    def __gen_phone(self):
+        return self.faker.phone_number()
+
     def generator(self):
         return {
             "customer_id": self.__gen_customer_id(),
             "first_name": self.__gen_first_name(),
             "last_name": self.__gen_last_name(),
             "gender": self.__gen_gender(),
+            "email": self.__gen_email(),
+            "phone_number": self.__gen_phone(),
             "dob": self.__gen_dob(),
             "address": self.__gen_address(),
             "country": self.__gen_country(),
@@ -54,7 +62,7 @@ def main() -> None:
     collection_name = "customers"
 
     connector = MongoConnector(mongo_host, mongo_port, mongo_username, mongo_password)
-    for _ in range(random.randint(1, 100)):
+    for _ in range(random.randint(100, 200)):
         customer = Customer(random.randint(1, 5))
         connector.insert_one(db_name, collection_name, customer.generator())
 
