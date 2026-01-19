@@ -15,7 +15,8 @@ lazy val root = project
     // Spark
     libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion,
     libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion,
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion,
+    libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion,
+    libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
     libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.4.0",
     libraryDependencies += "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.797",
   )

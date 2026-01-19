@@ -2,68 +2,7 @@ networks:
   project-net:
     driver: bridge
 
-services:
-  metastore:
-    image: metastore
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/hive.dockerfile
-    depends_on:
-      - postgres
-    container_name: metastore
-    environment:
-      DEFAULT_FS: "s3a://tables"
-      HIVE_WAREHOUSE_PATH: "s3a://tables"
-      HADOOP_CLASSPATH: /opt/hadoop/share/hadoop/tools/lib/*
-      DB_DRIVER: postgres
-      SERVICE_NAME: 'metastore'
-      SERVICE_OPTS: >
-        -Xmx1G
-        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
-        -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore_db
-        -Djavax.jdo.option.ConnectionUserName=postgres
-        -Djavax.jdo.option.ConnectionPassword=postgres
-    ports:
-        - '9083:9083'
-    volumes:
-        - ./docker-data/warehouse:/opt/hive/data/warehouse
-        # Mount local jars to a temporary staging area (Read-Only)
-        - ./jars:/tmp/ext-jars:ro
-    networks:
-      - project-net
-    env_file:
-      - ./.env
-
-  hiveserver2:
-    image: hiveserver2
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/hive.dockerfile
-    depends_on:
-      - metastore
-    restart: unless-stopped
-    container_name: hiveserver2
-    environment:
-      HADOOP_CLASSPATH: /opt/hadoop/share/hadoop/tools/lib/*
-      HIVE_SERVER2_THRIFT_PORT: 10000
-      IS_RESUME: 'true'
-      SERVICE_NAME: 'hiveserver2'
-      SERVICE_OPTS: >
-        -Xmx1G
-        -Dhive.metastore.uris=thrift://metastore:9083
-    env_file:
-      - ./.env
-    ports:
-      - '10000:10000'
-      - '10002:10002'
-    volumes:
-      - ./docker-data/warehouse:/opt/hive/data/warehouse
-      # Mount local jars to a temporary staging area (Read-Only)
-      - ./jars:/tmp/ext-jars:ro
-    networks:
-      - project-net
-    
-
+services:  
   minio:
     image: minio/minio
     container_name: minio
@@ -106,24 +45,6 @@ services:
       - MINIO_REGION_NAME=us-east-1
       - MINIO_REGION=us-east-1
 
-  postgres:
-    image: postgres:15-bookworm
-    container_name: postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=metastore_db
-    networks:
-      - project-net
-    volumes:
-      - ./docker-data/postgres:/var/lib/postgresql/
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
-
   master:
     container_name: master
     image: spark # Dùng để đặt tên cho image build
@@ -138,6 +59,7 @@ services:
       - "8080:8080"
       - "7077:7077"
       - "8081:8081"
+      - "4040:4040"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
@@ -288,5 +210,42 @@ services:
         IMAGE_NAME: mongo:6.0.27
     env_file:
       - ./.env
+    networks:
+      - project-net
+
+  kafka:
+    image: apache/kafka:4.1.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT_INTERNAL://0.0.0.0:29092,PLAINTEXT_EXTERNAL://0.0.0.0:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT_INTERNAL://kafka:29092,PLAINTEXT_EXTERNAL://localhost:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT_INTERNAL:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT_INTERNAL
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    networks:
+      - project-net
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.2.0
+    container_name: kafdrop
+    ports:
+      - "9020:9000"
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:29092
+    networks:
+      - project-net
+  
+  kafka-init:
+    image: apache/kafka:4.1.0
+    depends_on:
+      - kafka
+    command: >
+      sh -c "/opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic test-topic --bootstrap-server kafka:29092"
     networks:
       - project-net
