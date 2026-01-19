@@ -1,11 +1,11 @@
 val scala3Version = "2.13.18"
-val sparkVersion = "3.5.4"
+val sparkVersion = "4.0.1"
 
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "LearnScala",
-    version := "0.1.0-SNAPSHOT",
+    name := "Pipeline",
+    version := "0.1.0",
 
     scalaVersion := scala3Version,
 
@@ -15,6 +15,9 @@ lazy val root = project
     // Spark
     libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion,
     libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion,
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion,
+    libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.4.0",
+    libraryDependencies += "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.797",
   )
 fork := true
 

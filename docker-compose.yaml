@@ -136,6 +136,8 @@ services:
       - MODE=master
     ports:
       - "8080:8080"
+      - "7077:7077"
+      - "8081:8081"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
@@ -147,6 +149,9 @@ services:
         limits:
           cpus: '1'
           memory: 1g
+    volumes:
+      - ./pipeline/target/scala-2.13:/opt/spark/work-dir/jars
+    
   
   worker1:
     container_name: worker1
