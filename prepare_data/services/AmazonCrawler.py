@@ -1,4 +1,5 @@
 import time
+import random
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -10,6 +11,26 @@ from common.logger import log
 class AmazonCrawler:
     def __init__(self, driver : webdriver.Chrome):
         self.driver = driver
+        self.product_types = [
+        "Electronics",
+        "Computers & Accessories",
+        "Smart Home",
+        "Arts & Crafts",
+        "Automotive",
+        "Baby",
+        "Beauty & Personal Care",
+        "Women's Fashion",
+        "Men's Fashion",
+        "Health & Household",
+        "Home & Kitchen",
+        "Industrial & Scientific",
+        "Luggage",
+        "Pet Supplies",
+        "Sports & Outdoors",
+        "Tools & Home Improvement",
+        "Toys & Games",
+        "Video Games"
+    ]
 
     def crawl(self, url : str):
         # Entry
@@ -52,22 +73,23 @@ class AmazonCrawler:
         products_html = soup.find_all("div", {"data-testid": "product-card"})
         products = []
         for p in products_html:
-            link = p.find("a", {"data-testid": "product-card-link"}).get("href")
+            link = p.find("a", {"data-testid": "product-card-link"}).get("href") # pyright: ignore[reportOptionalMemberAccess]
             log.info(link)
-            name = p.find("span", {"class": "a-truncate-full"}).get_text(strip=True)
+            name = p.find("span", {"class": "a-truncate-full"}).get_text(strip=True) # pyright: ignore[reportOptionalMemberAccess]
             log.info(name)
             prices = p.find("span", {"aria-hidden": "true"})
-            symbol = prices.find("span" ,{"class": "a-price-symbol"}).get_text(strip=True)
+            symbol = prices.find("span" ,{"class": "a-price-symbol"}).get_text(strip=True) # pyright: ignore[reportOptionalMemberAccess]
             log.info(symbol)
-            price_whole = prices.find("span", {"class": "a-price-whole"}).get_text(strip=True)
+            price_whole = prices.find("span", {"class": "a-price-whole"}).get_text(strip=True) # type: ignore
             log.info(price_whole)
             data = {
                 "product_link": link,
                 "product_name": name,
                 "price": price_whole,
-                "currency": symbol
+                "currency": symbol,
+                "product_type": random.choice(self.product_types)
             }
-            base_price_tag = p.find("span", {"class": "a-price a-text-price"}).find("span", {"class": "a-offscreen"})
+            base_price_tag = p.find("span", {"class": "a-price a-text-price"}).find("span", {"class": "a-offscreen"}) # type: ignore
             if base_price_tag:
                 base_price = base_price_tag.get_text(strip=True)
                 data["base_price"] = base_price

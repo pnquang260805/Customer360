@@ -14,3 +14,4 @@ test.json
 /*/target
 /*/*venv
 .metals
+*.sql

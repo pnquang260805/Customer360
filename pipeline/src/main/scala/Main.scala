@@ -33,7 +33,8 @@ object Main extends App {
   //                             col("_airbyte_data.address").as("address"),
   //                             col("_airbyte_data.country").as("country"));
   // exploded_df.show(truncate=false);
-  val spark = SparkSession.builder().config(conf).getOrCreate();
+  var spark = SparkSession.builder().config(conf).getOrCreate();
+  spark.sparkContext.setLogLevel("WARN")
   var raw_df = spark.readStream.format("kafka")
                             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP)
                             .option("subscribe", KAFKA_TOPIC)

@@ -24,6 +24,13 @@ services:
       start_period: 30s
     volumes:
       - ./docker-data/minio:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512MB
+        reservations:
+          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
 
   mc:
     depends_on:
@@ -138,6 +145,7 @@ services:
   # MongoDB
   mongo-primary:
     image: capstone-mongo
+    container_name: mongo-primary
     build: 
       context: .
       dockerfile: ./dockerfiles/mongo.dockerfile
@@ -156,9 +164,17 @@ services:
         condition: service_healthy
       mongo-secondary-2:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512MB
+        reservations:
+          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
 
   mongo-secondary-1:
     image: capstone-mongo
+    container_name: mongo-secondary-1
     build: 
       context: .
       dockerfile: ./dockerfiles/mongo.dockerfile
@@ -178,9 +194,17 @@ services:
       timeout: 1m
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512MB
+        reservations:
+          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
 
   mongo-secondary-2:
     image: capstone-mongo
+    container_name: mongo-secondary-2
     build: 
       context: .
       dockerfile: ./dockerfiles/mongo.dockerfile
@@ -203,6 +227,7 @@ services:
     
   mongo-setup:
     image: capstone-mongo-setup
+    container_name: mongo-setup
     build: 
       context: .
       dockerfile: ./dockerfiles/mongo-setup.dockerfile
@@ -212,6 +237,13 @@ services:
       - ./.env
     networks:
       - project-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512MB
+        reservations:
+          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
 
   kafka:
     image: apache/kafka:4.1.0
@@ -240,12 +272,47 @@ services:
       - KAFKA_BROKERCONNECT=kafka:29092
     networks:
       - project-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512MB
+        reservations:
+          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
   
   kafka-init:
     image: apache/kafka:4.1.0
+    container_name: kafka-init
     depends_on:
       - kafka
     command: >
       sh -c "/opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic test-topic --bootstrap-server kafka:29092"
     networks:
       - project-net
+
+  cassandra:
+    image: cassandra:5.0.6
+    container_name: cassandra
+    networks:
+      - project-net
+    hostname: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_SEEDS=cassandra
+      - CASSANDRA_CLUSTER_NAME=cassandra_cluster
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=Rack1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_NUM_TOKENS=16
+      - MAX_HEAP_SIZE=800M
+      - HEAP_NEWSIZE=200M
+    volumes:
+      - ./docker-data/cassandra:/var/lib/cassandra
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1.5g
+        reservations:
+          memory: 128M  
