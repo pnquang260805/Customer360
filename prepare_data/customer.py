@@ -2,16 +2,12 @@ import random
 from faker import Faker
 from snowflake import SnowflakeGenerator
 
-from services.mongo_connector import MongoConnector
+from services.postgres_connector import PostgresConnector
 
 class Customer:
-    def __init__(self, instance: int):
+    def __init__(self):
         self.faker = Faker()
-        self.instance = instance
 
-    def __gen_customer_id(self) -> str:
-        gen = SnowflakeGenerator(instance=self.instance)
-        return str(next(gen))
 
     def __gen_first_name(self):
         return self.faker.first_name()
@@ -42,31 +38,52 @@ class Customer:
 
     def generator(self):
         return {
-            "customer_id": self.__gen_customer_id(),
             "first_name": self.__gen_first_name(),
             "last_name": self.__gen_last_name(),
             "gender": self.__gen_gender(),
+            "date_of_birth": self.__gen_dob(),
             "email": self.__gen_email(),
             "phone_number": self.__gen_phone(),
-            "dob": self.__gen_dob(),
             "address": self.__gen_address(),
             "country": self.__gen_country(),
         }
 
 def main() -> None:
-    mongo_username = "mongo"
-    mongo_password = "mongo"
-    mongo_host = "kubernetes.docker.internal"
-    mongo_port = 27017
-    db_name = "customers"
-    collection_name = "customers"
+    username = "postgres"
+    password = "postgres"
+    host = "localhost"
+    port = 5432
+    db_name = "store"
+    table_name = "customer"
 
-    connector = MongoConnector(mongo_host, mongo_port, mongo_username, mongo_password)
+    connector = PostgresConnector(db_name, username, password, host, port)
+
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {table_name}( 
+        customer_id SERIAL NOT NULL PRIMARY KEY,
+        first_name VARCHAR(50),
+        last_name VARCHAR(50),
+        gender VARCHAR(10),
+        date_of_birth DATE,
+        email VARCHAR(50),
+        phone_number VARCHAR(50),
+        address TEXT,
+        country VARCHAR(50)
+    )
+    """
+    curr = connector.cursor
+    curr.execute(create_table_query)
+    conn = connector.conn
+    conn.commit()
+
     for _ in range(random.randint(100, 200)):
-        customer = Customer(random.randint(1, 5))
-        connector.insert_one(db_name, collection_name, customer.generator())
+        customers = Customer().generator()
+        columns = list(customers.keys())
+        values = list(customers.values())
+        connector.insert(table_name, columns, values)
+                
 
-    connector.disconnect()
+    connector.close()
 
 
 if __name__ == "__main__":

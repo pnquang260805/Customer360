@@ -84,7 +84,7 @@ services:
   
   worker1:
     container_name: worker1
-    image: spark
+    image: worker1
     build: 
       context: .
       dockerfile: ./dockerfiles/spark.dockerfile
@@ -104,7 +104,7 @@ services:
   
   worker2:
     container_name: worker2
-    image: spark
+    image: worker2
     build: 
       context: .
       dockerfile: ./dockerfiles/spark.dockerfile
@@ -124,7 +124,7 @@ services:
   
   worker3:
     container_name: worker3
-    image: spark
+    image: worker3
     build: 
       context: .
       dockerfile: ./dockerfiles/spark.dockerfile
@@ -141,109 +141,20 @@ services:
         limits:
           cpus: '1'
           memory: 1g
-  
-  # MongoDB
-  mongo-primary:
-    image: capstone-mongo
-    container_name: mongo-primary
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/mongo.dockerfile
-      args:
-        IMAGE_NAME: mongo:6.0.27
-    env_file:
-      - ./.env
-    networks:
-      - project-net
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./docker-data/mongo1:/data/db
-    depends_on:
-      mongo-secondary-1:
-        condition: service_healthy
-      mongo-secondary-2:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512MB
-        reservations:
-          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
 
-  mongo-secondary-1:
-    image: capstone-mongo
-    container_name: mongo-secondary-1
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/mongo.dockerfile
-      args:
-        IMAGE_NAME: mongo:6.0.27
-    env_file:
-      - ./.env
-    networks:
-      - project-net
+  postgres:
+    container_name: postgres
+    image: postgres:14.20
     ports:
-      - "27018:27017"
-    volumes:
-      - ./docker-data/mongo2:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "localhost:27017", "--eval", "db.runCommand({ping:1})", "--quiet"]
-      interval: 1m30s
-      timeout: 1m
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512MB
-        reservations:
-          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
-
-  mongo-secondary-2:
-    image: capstone-mongo
-    container_name: mongo-secondary-2
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/mongo.dockerfile
-      args:
-        IMAGE_NAME: mongo:6.0.27
-    env_file:
-      - ./.env
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=store
     networks:
       - project-net
-    ports:
-      - "27019:27017"
     volumes:
-      - ./docker-data/mongo3:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "localhost:27017", "--eval", "db.runCommand({ping:1})", "--quiet"]
-      interval: 1m30s
-      timeout: 1m
-      retries: 5
-      start_period: 30s
-    
-  mongo-setup:
-    image: capstone-mongo-setup
-    container_name: mongo-setup
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/mongo-setup.dockerfile
-      args:
-        IMAGE_NAME: mongo:6.0.27
-    env_file:
-      - ./.env
-    networks:
-      - project-net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512MB
-        reservations:
-          memory: 128M  # Đảm bảo luôn có ít nhất 128MB
+      - ./docker-data/postgres:/var/lib/postgresql
 
   kafka:
     image: apache/kafka:4.1.0
@@ -290,29 +201,35 @@ services:
     networks:
       - project-net
 
-  cassandra:
-    image: cassandra:5.0.6
-    container_name: cassandra
+  catalog:
+    image: ghcr.io/projectnessie/nessie:0.106.0-java
+    container_name: catalog
     networks:
       - project-net
-    hostname: cassandra
     ports:
-      - "9042:9042"
+      - "19120:19120"
     environment:
-      - CASSANDRA_SEEDS=cassandra
-      - CASSANDRA_CLUSTER_NAME=cassandra_cluster
-      - CASSANDRA_DC=DC1
-      - CASSANDRA_RACK=Rack1
-      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
-      - CASSANDRA_NUM_TOKENS=16
-      - MAX_HEAP_SIZE=800M
-      - HEAP_NEWSIZE=200M
+      - nessie.version.store.type=IN_MEMORY
+      - nessie.catalog.default-warehouse=warehouse
+      - nessie.catalog.warehouses.warehouse.location=s3://tables/
+      - nessie.catalog.service.s3.default-options.endpoint=http://minio:9000/
+      - nessie.catalog.service.s3.default-options.access-key=urn:nessie-secret:quarkus:nessie.catalog.secrets.access-key
+      - nessie.catalog.service.s3.default-options.path-style-access=true
+      - nessie.catalog.service.s3.default-options.auth-type=STATIC
+      - nessie.catalog.secrets.access-key.name=admin
+      - nessie.catalog.secrets.access-key.secret=password
+      - nessie.catalog.service.s3.default-options.region=us-east-1
+      - nessie.server.authentication.enabled=false
     volumes:
-      - ./docker-data/cassandra:/var/lib/cassandra
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1.5g
-        reservations:
-          memory: 128M  
+      - ./docker-data/nessie:/opt/nessie/data
+  trino:
+    image: trinodb/trino:477
+    container_name: trino
+    ports:
+      - "8083:8080"
+    depends_on:
+      - minio
+    volumes:
+      - ./conf/trino/etc:/etc/trino
+    networks:
+      - project-net

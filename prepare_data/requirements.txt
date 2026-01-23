@@ -2,7 +2,7 @@ selenium
 beautifulsoup4
 fake-useragent
 undetected-chromedriver
-pymongo
+psycopg2-binary
 faker
 snowflake-id
 pandas
