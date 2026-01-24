@@ -5,6 +5,8 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.streaming._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.types.IntegerType
+import services.Ingestion
+import services.DeltaServices
 
 object Main extends App {
   val S3_ACCESS_KEY : String = "admin";
@@ -14,42 +16,25 @@ object Main extends App {
   val KAFKA_TOPIC : String = "test-topic";
 
   var conf = new SparkConf().setMaster("spark://master:7077").setAppName("pipeline");
-  // var spark = SparkSession.builder().appName("pipeline")
-  //                                   .config(conf).config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000")
-  //                                   .config("spark.hadoop.fs.s3a.access.key", S3_ACCESS_KEY)
-  //                                   .config("spark.hadoop.fs.s3a.secret.key", S3_SECRET_KEY)
-  //                                   .config("spark.hadoop.fs.s3a.path.style.access", "true")
-  //                                   .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") 
-  //                                   .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") 
-  //                                   .getOrCreate()
-  // var df : DataFrame = spark.read.format("json").option("pathGlobFilter", "*.jsonl").load("s3a://files/mongodb/customers");
-  // var exploded_df = df.select(col("_airbyte_data.customer_id").as("customer_id"),
-  //                             col("_airbyte_data.first_name").as("first_name"),
-  //                             col("_airbyte_data.last_name").as("last_name"),
-  //                             col("_airbyte_data.gender").as("gender"),
-  //                             col("_airbyte_data.dob").as("date_of_birth"),
-  //                             col("_airbyte_data.phone_number").as("phone_number"),
-  //                             col("_airbyte_data.email").as("email"),
-  //                             col("_airbyte_data.address").as("address"),
-  //                             col("_airbyte_data.country").as("country"));
-  // exploded_df.show(truncate=false);
-  var spark = SparkSession.builder().config(conf).getOrCreate();
+  conf.set("spark.sql.extension", "io.delta.sql.DeltaSparkSessionExtension")
+      .set("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+      .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+      .set("spark.hadoop.fs.s3a.access.key", S3_ACCESS_KEY)
+      .set("spark.hadoop.fs.s3a.secret.key", S3_SECRET_KEY)
+      .set("spark.hadoop.fs.s3a.path.style.access", "true")
+      .set("spark.hadoop.fs.s3a.endpoint", "http://minio:9000")
+      .set("fs.s3a.connection.establish.timeout", "15000")
+  val spark = SparkSession.builder().config(conf).getOrCreate();
+
   spark.sparkContext.setLogLevel("WARN")
-  var raw_df = spark.readStream.format("kafka")
-                            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP)
-                            .option("subscribe", KAFKA_TOPIC)
-                            .option("startingOffsets", "earliest")
-                            .load()
-  
-  val schema : StructType = StructType(List(
-    StructField("name", StringType, true),
-    StructField("age", IntegerType, true),
-  ))
-
-  var kafka_data : DataFrame = raw_df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
-  var temp_df : DataFrame = kafka_data.select(from_json(col("value"), schema).as("data"));
-  var df : DataFrame = temp_df.select(col("data.*"))
-
-  var query = df.writeStream.outputMode("append").format("console").start();
-  query.awaitTermination();
+  // var raw_df = spark.readStream.format("kafka")
+  //                           .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP)
+  //                           .option("subscribe", KAFKA_TOPIC)
+  //                           .option("startingOffsets", "earliest")
+  //                           .load();
+  var delta = new DeltaServices(spark);
+  delta.createDatabase("raw", "s3a://bronze/raw_db");
+  delta.createRawTable("raw", "raw_table", "s3a://bronze/raw_table")
+  var df = spark.read.table("raw.raw_table");
+  df.show();
 }

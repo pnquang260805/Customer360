@@ -13,7 +13,7 @@
         "s3:AbortMultipartUpload",
         "s3:GetBucketLocation"
       ],
-      "Resource": "arn:aws:s3:::files/*"
+      "Resource": "arn:aws:s3:::bronze/*"
     },
     {
       "Effect": "Allow",
@@ -27,7 +27,7 @@
         "s3:AbortMultipartUpload",
         "s3:GetBucketLocation"
       ],
-      "Resource": "arn:aws:s3:::files"
+      "Resource": "arn:aws:s3:::bronze"
     }
   ]
 }

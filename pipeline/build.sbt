@@ -1,5 +1,5 @@
-val scala3Version = "2.13.18"
-val sparkVersion = "4.0.1"
+val scala3Version = "2.12.18"
+val sparkVersion = "3.5.0"
 
 lazy val root = project
   .in(file("."))
@@ -16,9 +16,11 @@ lazy val root = project
     libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion,
     libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion,
     libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion,
-    libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
-    libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.4.0",
-    libraryDependencies += "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.797",
+    libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.4.4",
+    libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.4",
+    libraryDependencies += "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.262",
+    libraryDependencies += "io.delta" %% "delta-spark" % "3.2.0"
+    // libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "3.4.0"
   )
 fork := true
 

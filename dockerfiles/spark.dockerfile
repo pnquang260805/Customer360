@@ -1,5 +1,4 @@
-FROM spark:4.0.1-scala2.13-java21-ubuntu
-
+FROM spark:3.5.0-scala2.12-java17-r-ubuntu
 USER root
 RUN apt-get update -y && apt-get install curl -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 

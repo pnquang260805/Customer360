@@ -27,14 +27,16 @@ create_user () {
 }
 wait_and_alias
 echo "create buckets"
-/usr/bin/mc mb --ignore-existing minio/tables;
-/usr/bin/mc mb --ignore-existing minio/files;
-/usr/bin/mc policy set public minio/tables;
-/usr/bin/mc policy set public minio/files;
+/usr/bin/mc mb --ignore-existing minio/bronze;
+/usr/bin/mc mb --ignore-existing minio/silver;
+/usr/bin/mc mb --ignore-existing minio/gold;
+/usr/bin/mc policy set public minio/bronze;
+/usr/bin/mc policy set public minio/silver;
+/usr/bin/mc policy set public minio/gold;
 
-create_policy minio airbyte-policy /mymc/airbyte-policy.json
+# create_policy minio airbyte-policy /mymc/airbyte-policy.json
 
-create_user minio airbyte airbyte-minio
-attach_policy minio airbyte-policy airbyte
-echo "MinIO Setup Complete!"
-tail -f /dev/null
+# create_user minio airbyte airbyte-minio
+# attach_policy minio airbyte-policy airbyte
+# echo "MinIO Setup Complete!"
+# tail -f /dev/null

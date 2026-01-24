@@ -79,7 +79,7 @@ services:
           cpus: '1'
           memory: 1g
     volumes:
-      - ./pipeline/target/scala-2.13:/opt/spark/work-dir/jars
+      - ./pipeline/target:/opt/spark/work-dir/jars
     
   
   worker1:
@@ -154,7 +154,7 @@ services:
     networks:
       - project-net
     volumes:
-      - ./docker-data/postgres:/var/lib/postgresql
+      - ./docker-data/postgres:/var/lib/postgresql/data
 
   kafka:
     image: apache/kafka:4.1.0
@@ -201,35 +201,14 @@ services:
     networks:
       - project-net
 
-  catalog:
-    image: ghcr.io/projectnessie/nessie:0.106.0-java
-    container_name: catalog
-    networks:
-      - project-net
-    ports:
-      - "19120:19120"
-    environment:
-      - nessie.version.store.type=IN_MEMORY
-      - nessie.catalog.default-warehouse=warehouse
-      - nessie.catalog.warehouses.warehouse.location=s3://tables/
-      - nessie.catalog.service.s3.default-options.endpoint=http://minio:9000/
-      - nessie.catalog.service.s3.default-options.access-key=urn:nessie-secret:quarkus:nessie.catalog.secrets.access-key
-      - nessie.catalog.service.s3.default-options.path-style-access=true
-      - nessie.catalog.service.s3.default-options.auth-type=STATIC
-      - nessie.catalog.secrets.access-key.name=admin
-      - nessie.catalog.secrets.access-key.secret=password
-      - nessie.catalog.service.s3.default-options.region=us-east-1
-      - nessie.server.authentication.enabled=false
-    volumes:
-      - ./docker-data/nessie:/opt/nessie/data
-  trino:
-    image: trinodb/trino:477
-    container_name: trino
-    ports:
-      - "8083:8080"
-    depends_on:
-      - minio
-    volumes:
-      - ./conf/trino/etc:/etc/trino
-    networks:
-      - project-net
+  # trino:
+  #   image: trinodb/trino:477
+  #   container_name: trino
+  #   ports:
+  #     - "8083:8080"
+  #   depends_on:
+  #     - minio
+  #   volumes:
+  #     - ./config/trino/etc:/etc/trino
+  #   networks:
+  #     - project-net

@@ -10,10 +10,10 @@ class Customer:
 
 
     def __gen_first_name(self):
-        return self.faker.first_name()
+        return self.faker.first_name()[:50]
 
     def __gen_last_name(self):
-        return self.faker.last_name()
+        return self.faker.last_name()[:50]
 
     def __gen_dob(self):
         return self.faker.date_of_birth(minimum_age=10, maximum_age=80).strftime("%Y-%m-%d")
@@ -28,13 +28,13 @@ class Customer:
         return self.faker.address()
 
     def __gen_country(self):
-        return self.faker.country()
+        return self.faker.country()[:50]
 
     def __gen_email(self):
-        return self.faker.email()
+        return self.faker.email()[:50]
 
     def __gen_phone(self):
-        return self.faker.phone_number()
+        return self.faker.phone_number()[:50]
 
     def generator(self):
         return {
@@ -76,7 +76,7 @@ def main() -> None:
     conn = connector.conn
     conn.commit()
 
-    for _ in range(random.randint(100, 200)):
+    for _ in range(random.randint(100, 500)):
         customers = Customer().generator()
         columns = list(customers.keys())
         values = list(customers.values())
