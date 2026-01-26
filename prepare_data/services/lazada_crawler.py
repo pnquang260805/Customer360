@@ -43,8 +43,9 @@ class LazadaCrawler:
         self.driver.get(url)
 
         html = self.driver.find_element(By.TAG_NAME, 'html')
-        for _ in range(50):
-            time.sleep(1)
+        for i in range(50):
+            print(f"Scroll {i}")
+            time.sleep(0.5)
             html.send_keys(Keys.END)
 
 
