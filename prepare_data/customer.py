@@ -1,13 +1,13 @@
 import random
 from faker import Faker
 from snowflake import SnowflakeGenerator
+from datetime import datetime, timedelta
 
 from services.postgres_connector import PostgresConnector
 
 class Customer:
     def __init__(self):
         self.faker = Faker()
-
 
     def __gen_first_name(self):
         return self.faker.first_name()[:50]
@@ -35,6 +35,9 @@ class Customer:
 
     def __gen_phone(self):
         return self.faker.phone_number()[:50]
+    
+    def __gen_active_date(self):
+        return self.faker.date_this_decade().strftime("%Y-%m-%d")
 
     def generator(self):
         return {
@@ -46,6 +49,7 @@ class Customer:
             "phone_number": self.__gen_phone(),
             "address": self.__gen_address(),
             "country": self.__gen_country(),
+            "active_date": self.__gen_active_date()
         }
 
 def main() -> None:
@@ -68,7 +72,8 @@ def main() -> None:
         email VARCHAR(50),
         phone_number VARCHAR(50),
         address TEXT,
-        country VARCHAR(50)
+        country VARCHAR(50),
+        active_date DATE
     )
     """
     curr = connector.cursor
@@ -82,7 +87,6 @@ def main() -> None:
         values = list(customers.values())
         connector.insert(table_name, columns, values)
                 
-
     connector.close()
 
 
