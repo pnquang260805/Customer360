@@ -201,6 +201,20 @@ services:
     networks:
       - project-net
 
+  neo4j:
+    image: neo4j:5.26.20-ubi9
+    container_name: neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - ./docker-data/neo4j:/data
+    networks:
+      - project-net
+    environment:
+      - NEO4J_AUTH=neo4j/capstoneptit
+      - NEO4J_initial_dbms_default__database=identity-graph
+
   # trino:
   #   image: trinodb/trino:477
   #   container_name: trino
