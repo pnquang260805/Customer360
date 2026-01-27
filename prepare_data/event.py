@@ -1,10 +1,14 @@
 import random
+import json
+import time
 
 from services.postgres_connector import PostgresConnector
 from common.logger import log
 from datetime import datetime, timedelta
 from uuid import uuid4
 from faker import Faker
+from confluent_kafka import Producer
+from typing import *
 
 fake = Faker()
 
@@ -37,11 +41,11 @@ def gen(customers, products):
         "platform": __gen_platform(),
         "action": __gen_action(),
         "session_id": __gen_session_id(),
-        "event_time": __gen_event_date(customer_creation_date),
+        "event_time": __gen_event_date(customer_creation_date).isoformat(),
         "url": product
     }
 
-def main():
+def fetch_data():
     username = "postgres"
     password = "postgres"
     host = "localhost"
@@ -62,29 +66,30 @@ def main():
     crm_data = list(zip(crm_ids, creation_dates))
     cursor.execute(f"SELECT product_id, product_link FROM {product_table}")
     temp= cursor.fetchall()
-    # products_id = [ids[0] for ids in temp] 
     products_link = [ids[1] for ids in temp] 
+    return crm_data, products_link
 
-    table_name = "event"
+def callback(err, msg):
+    if err:
+        log.error(f"Error when sending message to {msg.topic()}")
+    else:
+        log.info(f"Message sent to {msg.topic()}")
 
-    query = f"""
-    CREATE TABLE IF NOT EXISTS {table_name} (
-        event_id VARCHAR(100) PRIMARY KEY NOT NULL,
-        customer_id VARCHAR(50),
-        platform VARCHAR(20),
-        action VARCHAR(20),
-        session_id VARCHAR(100) ,
-        event_time TIMESTAMP,
-        url TEXT
-    )
-"""
-    cursor.execute(query)
-    conn.commit()
-    for _ in range(random.randint(100, 500)):
-        data = gen(crm_data, products_link)
-        columns = list(data.keys())
-        values = list(data.values())
-        connector.insert(table_name, columns, values)
+def send_msg(producer : Producer, topic : str, message: dict) -> None:
+    producer.produce(topic, json.dumps(message), on_delivery=callback)
+    producer.flush()
+
+def main():
+    TOPIC = "event-topic"
+    BOOTSTRAP = "localhost:9092"
+    conf = {
+        "bootstrap.servers": BOOTSTRAP
+    }
+    producer = Producer(conf)
+    crm_data, product_links = fetch_data()
+    for i in range(100):
+        send_msg(producer, TOPIC, gen(crm_data, product_links))
+        time.sleep(random.random())
 
 if __name__ == "__main__":
     main()
