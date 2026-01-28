@@ -14,14 +14,14 @@ class DeltaServices(spark : SparkSession){
     def createRawTable(dbName : String, tableName : String, location : String): Unit = {
         var query : String = s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
-                ingested_time TIMESTAMP,
-                source STRING,
-                payload STRING
+                offset STRING,
+                topic STRING,
+                key STRING,
+                value STRING
             )
             USING DELTA
-            PARTITIONED BY (source)
-            LOCATION '$location'
-        """
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """ 
         spark.sql(query)
     }
 }

@@ -12,7 +12,7 @@ class EventService(spark : SparkSession, bootstrap : String) extends KafkaInterf
             "startingOffsets" -> startOffSet
         );
         var fullOptions = baseOptions ++ options;
-        var eventDf = spark.readStream.format("kafka").options(fullOptions).load().selectExpr("CAST (value AS STRING)"); // options có "s"
+        var eventDf = spark.readStream.format("kafka").options(fullOptions).load().selectExpr("key","CAST (key AS STRING)","CAST (value AS STRING)"); // options có "s"
         return eventDf;
     }
 }
