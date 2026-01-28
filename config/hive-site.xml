@@ -1,75 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <configuration>
-  <!-- Metastore Configuration -->
-  <property>
-    <name>javax.jdo.option.ConnectionURL</name>
-    <value>jdbc:postgresql://postgres-hive:5432/metastore?createDatabaseIfNotExist=true</value>
-  </property>
-  
-  <property>
-    <name>javax.jdo.option.ConnectionDriverName</name>
-    <value>org.postgresql.Driver</value>
-  </property>
-  
-  <property>
-    <name>javax.jdo.option.ConnectionUserName</name>
-    <value>postgres</value>
-  </property>
-  
-  <property>
-    <name>javax.jdo.option.ConnectionPassword</name>
-    <value>postgres</value>
-  </property>
-  
-  <!-- S3/MinIO Configuration -->
-  <property>
-    <name>fs.s3a.endpoint</name>
-    <value>http://minio:9000</value>
-  </property>
-  
-  <property>
-    <name>fs.s3a.access.key</name>
-    <value>admin</value>
-  </property>
-  
-  <property>
-    <name>fs.s3a.secret.key</name>
-    <value>password</value>
-  </property>
-  
-  <property>
-    <name>fs.s3a.path.style.access</name>
-    <value>true</value>
-  </property>
-  
-  <property>
-    <name>fs.s3a.impl</name>
-    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
-  </property>
-  
-  <property>
-    <name>fs.s3a.connection.ssl.enabled</name>
-    <value>false</value>
-  </property>
-  
-  <!-- Warehouse directory -->
-  <property>
-    <name>hive.metastore.warehouse.dir</name>
-    <value>s3a://lake/</value>
-  </property>
-  
-  <property>
-    <name>hive.execution.engine</name>
-    <value>spark</value>
-  </property>
-  
-  <!-- Delta Lake Configuration -->
-  <property>
-    <name>spark.sql.extensions</name>
-    <value>io.delta.sql.DeltaSparkSessionExtension</value>
-  </property>
-  
-  <property>
-    <name>spark.sql.catalog.spark_catalog</name>
-    <value>org.apache.spark.sql.delta.catalog.DeltaCatalog</value>
-  </property>
+    <!-- Metastore Connection -->
+    <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>org.postgresql.Driver</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:postgresql://postgres-hive:5432/metastore</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>postgres</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>postgres</value>
+    </property>
+    <property>
+        <name>hive.metastore.schema.verification</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>datanucleus.schema.autoCreateAll</name>
+        <value>true</value>
+    </property>
+
+    <!-- S3A / MinIO Configuration -->
+    <property>
+        <name>fs.s3a.endpoint</name>
+        <value>http://minio:9000</value>
+    </property>
+    <property>
+        <name>fs.s3a.access.key</name>
+        <value>admin</value>
+    </property>
+    <property>
+        <name>fs.s3a.secret.key</name>
+        <value>password</value>
+    </property>
+    <property>
+        <name>fs.s3a.path.style.access</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>fs.s3a.impl</name>
+        <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+    </property>
+    <property>
+        <name>fs.s3a.connection.ssl.enabled</name>
+        <value>false</value>
+    </property>
+
+    <!-- Warehouse -->
+    <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>s3a://lake/warehouse/</value>
+    </property>
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://metastore:9083</value>
+    </property>
+
+    <!-- Execution Engine -->
+    <property>
+        <name>hive.execution.engine</name>
+        <value>mr</value>  <!-- Thay đổi từ spark sang mr để đơn giản -->
+    </property>
+
+    <!-- Hive Server2 Configuration -->
+    <property>
+        <name>hive.server2.thrift.port</name>
+        <value>10000</value>
+    </property>
+    <property>
+        <name>hive.server2.thrift.bind.host</name>
+        <value>0.0.0.0</value>
+    </property>
+    <property>
+        <name>hive.server2.enable.doAs</name>
+        <value>false</value>
+    </property>
+
+    <!-- Logging Configuration -->
+    <property>
+        <name>hive.root.logger</name>
+        <value>INFO,console</value>
+    </property>
 </configuration>

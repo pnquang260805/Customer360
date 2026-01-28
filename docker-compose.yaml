@@ -235,6 +235,8 @@ services:
       - project-net
     environment:
       - SERVICE_NAME=metastore
+      - HIVE_POSTGRES_USERNAME=postgres
+      - HIVE_POSTGRES_PASSWORD=postgres
     depends_on:
       - postgres-hive
     deploy:
@@ -244,6 +246,9 @@ services:
           memory: 1g
         reservations:
           memory: 128M
+    volumes:
+      - ./config/metastore-site.xml:/opt/hive-metastore/conf/metastore-site.xml
+      - ./config/core-site.xml:/opt/hive-metastore/conf/core-site.xml
 
   postgres-hive:
     container_name: postgres-hive
@@ -263,26 +268,5 @@ services:
           memory: 512M
         reservations:
           memory: 128M
-  
-  hiveserver2:
-    image: hiveserver2
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/hive.dockerfile
-    container_name: hiveserver2
-    environment:
-      SERVICE_NAME: hiveserver2
-      HIVE_METASTORE_URIS: thrift://metastore:9083
-      AWS_ACCESS_KEY_ID: admin
-      AWS_SECRET_ACCESS_KEY: password
-      HIVE_SERVER2_THRIFT_PORT: 10000
-      HIVE_SERVER2_THRIFT_BIND_HOST: 0.0.0.0
-      HIVE_SERVER2_TRANSPORT_MODE: binary
-      HIVE_SERVER2_ENABLE_DOAS: "false"
     ports:
-      - "10000:10000"  # HiveServer2 thrift port
-      - "10002:10002"
-    networks:
-      - project-net
-    depends_on:
-      - metastore
+      - "5433:5432"
