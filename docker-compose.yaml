@@ -270,3 +270,13 @@ services:
           memory: 128M
     ports:
       - "5433:5432"
+
+  trino:
+    image: trinodb/trino:479
+    container_name: trino
+    ports:
+      - "9080:8080"
+    volumes:
+      - ./config/trino/etc:/etc/trino
+    networks:
+      - project-net

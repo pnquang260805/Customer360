@@ -2,5 +2,9 @@
     "files.watcherExclude": {
         "**/target": true
     },
-    "java.project.sourcePaths": []
+    "java.project.sourcePaths": [],
+    "cSpell.words": [
+        "trino",
+        "trinodb"
+    ]
 }
