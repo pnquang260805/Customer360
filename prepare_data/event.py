@@ -75,9 +75,9 @@ def main():
     
     crm_data, product_links = fetch_data()
     kafka_service = KafkaService()
-    for i in range(100):
+    for i in range(random.randint(10, 100)):
         kafka_service.send_msg(TOPIC, gen(crm_data, product_links), key="event")
-        time.sleep(random.random())
+        time.sleep(random.random()*1.5)
 
 if __name__ == "__main__":
     main()

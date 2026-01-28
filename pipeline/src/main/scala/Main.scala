@@ -58,9 +58,12 @@ object Main extends App {
     deltaService.createRawTable(rawDb, rawTable, "s3a://lake/raw/raw_table/");
 
   
-//   var eventService : EventService = new EventService(spark, bootstrap = KAFKA_BOOTSTRAP)
-//   var df = eventService.readStreamKafka(topic = KAFKA_TOPIC);
-//   df.writeStream.format("console").outputMode("append").option("truncate", "false").start();
+    var eventService : EventService = new EventService(spark, bootstrap = KAFKA_BOOTSTRAP)
+    var df = eventService.readStreamKafka(topic = KAFKA_TOPIC);
+    df.writeStream.format("delta")
+        .outputMode("append")
+        .option("checkpointLocation", "s3a://lake/checkpoint/")
+        .toTable(s"$rawDb.$rawTable"); // không dùng start
 
-//   spark.streams.awaitAnyTermination();
+    spark.streams.awaitAnyTermination();
 }
