@@ -16,10 +16,10 @@ lazy val root = project
     libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion,
     libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion,
     libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion,
-    libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.4.4",
+    libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
     libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.4",
     libraryDependencies += "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.262",
-    libraryDependencies += "io.delta" %% "delta-spark" % "3.2.0",
+    libraryDependencies += "org.apache.hudi" %% "hudi-spark3.5-bundle" % "1.0.0",
     libraryDependencies += "org.neo4j" %% "neo4j-connector-apache-spark" % "5.4.0_for_spark_3"
   )
 fork := true
