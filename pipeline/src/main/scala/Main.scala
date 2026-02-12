@@ -21,6 +21,7 @@ object Main extends App {
     val NEO4J_USERNAME : String = "neo4j";
     val NEO4J_PASSWORD : String = "capstoneptit";
     val NEO4J_DBNAME : String = "identity-graph";
+    val BUCKET : String = "tables";
 
     var conf = new SparkConf().setMaster("spark://master:7077").setAppName("pipeline");
 
@@ -52,14 +53,14 @@ object Main extends App {
     var catalogName : String = "hudi"
 
     var hudiService : HudiService = new HudiService(spark);
-    hudiService.createDatabase(rawDb, "s3a://lake/raw/raw_db/");
-    hudiService.createRawTable(rawDb, rawTable, "s3a://lake/raw/raw_table/");
+    hudiService.createDatabase(rawDb, s"s3a://$BUCKET/bronze/raw_db/");
+    hudiService.createRawTable(rawDb, rawTable, s"s3a://$BUCKET/bronze/raw_table/");
 
   
     var eventService : EventService = new EventService(spark, bootstrap = KAFKA_BOOTSTRAP)
     var df = eventService.readStreamKafka(topic = KAFKA_TOPIC);
     
-    hudiService.writeStreamTable(df, "s3a://lake/checkpoint/", rawDb, rawTable);
+    hudiService.writeStreamTable(df, s"s3a://$BUCKET/checkpoint/", rawDb, rawTable);
 
     spark.streams.awaitAnyTermination();
 }

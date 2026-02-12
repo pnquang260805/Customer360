@@ -16,3 +16,4 @@ test.json
 .metals
 *.sql
 /*/__pycache__
+/*/.env

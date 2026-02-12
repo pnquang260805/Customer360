@@ -27,8 +27,10 @@ create_user () {
 }
 wait_and_alias
 echo "create buckets"
-/usr/bin/mc mb --ignore-existing minio/lake;
-/usr/bin/mc policy set public minio/lake;
+/usr/bin/mc mb --ignore-existing minio/tables;
+/usr/bin/mc policy set public minio/tables;
+/usr/bin/mc mb --ignore-existing minio/files;
+/usr/bin/mc policy set public minio/files;
 
 # create_policy minio airbyte-policy /mymc/airbyte-policy.json
 
