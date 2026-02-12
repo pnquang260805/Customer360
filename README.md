@@ -1,7 +1,7 @@
 # __Customer 360__
 
 ## Overview
-Customer 360 sử dụng data lakehouse dựa theo `kiến trúc phân lớp (medallion architecture)`. Mỗi lớp sẽ là 1 bucket và sẽ có các bảng Delta của mình. Các bảng fact và dims sẽ được để trong `silver zone`
+Customer 360 sử dụng data lakehouse dựa theo `kiến trúc phân lớp (medallion architecture)`. Mỗi lớp sẽ là 1 folder và sẽ có các bảng Delta của mình. Các bảng fact và dims sẽ được để trong `silver zone`
 
 + `Bronze zone`: chứa bảng với các trường `ingested_time`: time stamp, `source`: string, `payload`: string - chứa dữ liệu thô
 + `Silver zone`: chứa các bảng fact và dims
@@ -51,9 +51,7 @@ docker exec -it master bash
 --conf "spark.network.timeout=800s" \
 --conf "spark.rpc.askTimeout=800s" \
 --conf "spark.driver.maxResultSize=2g" \
---conf "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension" \
-  --conf "spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog" \
-  --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.4,io.delta:delta-spark_2.12:3.2.0\
+  --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.hudi:hudi-spark3.5-bundle_2.12:1.0.0,org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3\
   /opt/spark/work-dir/jars/scala-2.12/pipeline_2.12-0.1.0.jar
 ```
 
