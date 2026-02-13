@@ -71,7 +71,7 @@ def fetch_data():
     return crm_data, products_link
 
 def main():
-    TOPIC = "event-topic"
+    TOPIC = "raw-2-bronze-topic"
     
     crm_data, product_links = fetch_data()
     kafka_service = KafkaService()
