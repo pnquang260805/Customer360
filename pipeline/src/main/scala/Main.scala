@@ -1,5 +1,5 @@
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.SparkConf
+
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.apache.spark.streaming._
@@ -7,8 +7,10 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.types.IntegerType
 import services.HudiService
 import org.apache.spark.sql.SaveMode
-import services.EventService
-// import org.apache.spark.sql.
+import extractors.ExtractKafka
+import loaders.LoadHudi
+import config.SparkConfig
+import extracts.ExtractKafka
 
 object Main extends App {
     // Base variables
@@ -28,27 +30,11 @@ object Main extends App {
     val SILVER_2_GOLD_TOPIC : String = "silver-2-gold";
 
     //region Spark
-    var conf = new SparkConf().setMaster("spark://master:7077").setAppName("pipeline");
-
-    // Config S3
-    conf.set("spark.sql.extensions","org.apache.spark.sql.hudi.HoodieSparkSessionExtension")
-        .set("'spark.sql.catalog.spark_catalog", "org.apache.spark.sql.hudi.catalog.HoodieCatalog")
-        .set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .set("spark.hadoop.fs.s3a.access.key", S3_ACCESS_KEY)
-        .set("spark.hadoop.fs.s3a.secret.key", S3_SECRET_KEY)
-        .set("spark.hadoop.fs.s3a.path.style.access", "true")
-        .set("spark.hadoop.fs.s3a.endpoint", "http://minio:9000")
-        .set("fs.s3a.connection.establish.timeout", "15000")
-        .set("spark.kryo.registrator","org.apache.spark.HoodieSparkKryoRegistrar")
-        .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-
-    // Config Neo4j
-    conf.set("neo4j.url", NEO4J_URL)
-        .set("neo4j.authentication.basic.username", NEO4J_USERNAME)
-        .set("neo4j.authentication.basic.password", NEO4J_PASSWORD)
-        .set("neo4j.database", NEO4J_DBNAME);
+    var sparkConf = new SparkConfig("spark://master:7077")
+    sparkConf.configS3(S3_ACCESS_KEY, S3_SECRET_KEY)
+    sparkConf.configNeo4j(NEO4J_URL, NEO4J_USERNAME, NEO4J_PASSWORD, NEO4J_DBNAME)
     
-    val spark = SparkSession.builder().config(conf).getOrCreate();
+    val spark = SparkSession.builder().config(sparkConf.getConf()).getOrCreate();
 
     spark.sparkContext.setLogLevel("WARN");
     import spark.implicits._
@@ -56,18 +42,27 @@ object Main extends App {
 
     // region Initial dependencies
     var hudiService : HudiService = new HudiService(spark);
-    var eventService : EventService = new EventService(spark, bootstrap = KAFKA_BOOTSTRAP)
+    var kafkaExtractor: ExtractKafka = new ExtractKafka(spark, KAFKA_BOOTSTRAP);
+    var hudiLoader : LoadHudi = new LoadHudi(spark)
     // endregion
 
     var rawDb : String = "raw";
     var rawTable : String = "raw_table";
     var catalogName : String = "hudi"
 
+    // Initiate database
     hudiService.createDatabase(rawDb, s"s3a://$BUCKET/bronze/raw_db/");
     hudiService.createRawTable(rawDb, rawTable, s"s3a://$BUCKET/bronze/raw_table/");
 
-    var rawStreamDf = eventService.readStreamKafka(topic = RAW_2_BRONZE_TOPIC);    
-    hudiService.writeStreamTable(rawStreamDf, s"s3a://$BUCKET/checkpoint/", rawDb, rawTable);
+    // Extract
+    var rawStreamDf = kafkaExtractor.extractStreamKafka(topic = RAW_2_BRONZE_TOPIC);    
+    
+    // Load
+    // Load data into raw
+    hudiLoader.loadStreamTable(rawStreamDf, s"s3a://$BUCKET/checkpoint/", rawDb, rawTable);
+
+    // Transform
+
 
     spark.streams.awaitAnyTermination();
 }
