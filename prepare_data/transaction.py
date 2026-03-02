@@ -1,3 +1,4 @@
+from decimal import Decimal
 import random
 import json
 import time
@@ -21,19 +22,19 @@ def __gen_event_date(creation_date):
 def __gen_id():
     return str(uuid4())
 
-def __noise_calculate(a : int, b : int) -> int:
+def __noise_calculate(a : float, b : float) -> float:
     choice = random.random()
     if choice >= 0.05: 
-        return a * b
+        return round(float(a) * float(b), 2)
     else: # 5% tỷ lệ xảy ra lỗi
-        return a * b * random.random()
+        return round(float(a) * float(b) * random.random(), 2)
     
-def __noise_data(a : int) -> int:
+def __noise_data(a : float) -> float:
     choice = random.random()
     if choice >= 0.05:
         return a
     else:
-        return a * random.random()
+        return round(float(a) * random.random(), 2)
 
 def fetch_data():
     username = "postgres"

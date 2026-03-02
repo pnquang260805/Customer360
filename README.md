@@ -34,7 +34,7 @@ docker-compose up -d --build
 
 Mở terminal thư mục `pipeline`
 ```
-sbt clean compile build
+sbt clean compile package
 ```
 
 ```

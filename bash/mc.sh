@@ -31,6 +31,8 @@ echo "create buckets"
 /usr/bin/mc policy set public minio/tables;
 /usr/bin/mc mb --ignore-existing minio/files;
 /usr/bin/mc policy set public minio/files;
+/usr/bin/mc mb --ignore-existing minio/lake;
+/usr/bin/mc policy set public minio/lake;
 
 # create_policy minio airbyte-policy /mymc/airbyte-policy.json
 

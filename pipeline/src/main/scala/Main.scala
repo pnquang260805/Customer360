@@ -8,9 +8,9 @@ import org.apache.spark.sql.types.IntegerType
 import services.HudiService
 import org.apache.spark.sql.SaveMode
 import extractors.ExtractKafka
-import loaders.LoadHudi
 import config.SparkConfig
-import extracts.ExtractKafka
+import extractors.ExtractKafka
+import transformers.TransformTransactionSilver
 
 object Main extends App {
     // Base variables
@@ -29,6 +29,9 @@ object Main extends App {
     val BRONZE_2_SILVER_TOPIC :  String = "bronze-2-silver";
     val SILVER_2_GOLD_TOPIC : String = "silver-2-gold";
 
+    val CHECKPOINT_BRONZE : String = s"s3a://$BUCKET/checkpoints/bronze_raw/";
+    val CHECKPOINT_SILVER : String = s"s3a://$BUCKET/checkpoints/silver_transaction/";
+
     //region Spark
     var sparkConf = new SparkConfig("spark://master:7077")
     sparkConf.configS3(S3_ACCESS_KEY, S3_SECRET_KEY)
@@ -43,26 +46,36 @@ object Main extends App {
     // region Initial dependencies
     var hudiService : HudiService = new HudiService(spark);
     var kafkaExtractor: ExtractKafka = new ExtractKafka(spark, KAFKA_BOOTSTRAP);
-    var hudiLoader : LoadHudi = new LoadHudi(spark)
+    var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver();
     // endregion
 
     var rawDb : String = "raw";
     var rawTable : String = "raw_table";
     var catalogName : String = "hudi"
+    var silverDb : String = "silver";
+    var silverTransactionTable : String = "silver_transaction";
 
     // Initiate database
     hudiService.createDatabase(rawDb, s"s3a://$BUCKET/bronze/raw_db/");
     hudiService.createRawTable(rawDb, rawTable, s"s3a://$BUCKET/bronze/raw_table/");
+
+    hudiService.createDatabase(silverDb,  s"s3a://$BUCKET/silver/silver_db/");
+    hudiService.createSilverTransaction(silverDb, silverTransactionTable, s"s3a://$BUCKET/silver/silver_transaction/");
 
     // Extract
     var rawStreamDf = kafkaExtractor.extractStreamKafka(topic = RAW_2_BRONZE_TOPIC);    
     
     // Load
     // Load data into raw
-    hudiLoader.loadStreamTable(rawStreamDf, s"s3a://$BUCKET/checkpoint/", rawDb, rawTable);
+    hudiService.writeStream(rawStreamDf, CHECKPOINT_BRONZE, rawDb, rawTable, s"s3a://$BUCKET/bronze/raw_table/");
 
     // Transform
-
+    var rawDf = hudiService.readStreamTable(s"s3a://$BUCKET/bronze/raw_table/");
+    // rawDf.writeStream.format("console").start(); // for debug
+    var transactionDf = rawDf.filter(col("key") === "transaction");
+        
+    var silverTransactionDf : DataFrame = transformTransactionSilver.transform(rawDf);
+    hudiService.writeStream(silverTransactionDf, CHECKPOINT_SILVER, silverDb, silverTransactionTable, s"s3a://$BUCKET/silver/silver_transaction/");
 
     spark.streams.awaitAnyTermination();
 }

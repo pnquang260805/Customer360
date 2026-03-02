@@ -40,8 +40,8 @@ def main():
         product_id SERIAL NOT NULL PRIMARY KEY,
         product_name TEXT,
         product_link TEXT,
-        price BIGINT,
-        base_price BIGINT,
+        price DECIMAL(10,2),
+        base_price DECIMAL(10, 2),
         currency VARCHAR(10),
         sale_percents VARCHAR(50),
         product_type VARCHAR(100)

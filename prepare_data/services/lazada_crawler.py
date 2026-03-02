@@ -44,7 +44,7 @@ class LazadaCrawler:
 
         html = self.driver.find_element(By.TAG_NAME, 'html')
         for i in range(50):
-            print(f"Scroll {i}")
+            print(f"Scroll {i+1}")
             time.sleep(0.5)
             html.send_keys(Keys.END)
 
@@ -61,10 +61,10 @@ class LazadaCrawler:
             log.info(name)
             prices = p.find("span", {"class": "lzdPriceDiscountPCV2"})
             if prices:
-                prices = int("".join(prices.get_text(strip=True).split(","))[1:] )
+                prices = float("".join(prices.get_text(strip=True).split(","))[1:])
             base_prices = p.find("span", {"class": "lzdPriceOriginPCV2"})
             if base_prices:
-                base_prices = int("".join(base_prices.get_text(strip=True).split(","))[1:])
+                base_prices = float("".join(base_prices.get_text(strip=True).split(","))[1:])
             symbol = p.find("span", {"class": "lzdPriceOriginPCV2"})
             if symbol:
                 symbol = symbol.get_text(strip=True)[0]

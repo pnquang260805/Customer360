@@ -12,7 +12,7 @@ if [ $mode = "master" ]; then
 elif [ $mode = "worker" ]; then
     echo "Starting worker"
     # master url: spark://host:post <port default: 7077>
-    /opt/spark/sbin/start-worker.sh $MASTER_URL
+    /opt/spark/sbin/start-worker.sh --webui-port 8081 $MASTER_URL
     
     echo "Worker has been started"
 else

@@ -1,6 +1,8 @@
 package services
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.streaming.Trigger
 
 class HudiService(spark : SparkSession){
     def createDatabase(dbName : String, location : String): Unit ={
@@ -20,5 +22,47 @@ class HudiService(spark : SparkSession){
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """ 
         spark.sql(query)
-    }   
+    }  
+
+    def createSilverTransaction(dbName : String, tableName : String, location : String): Unit = {
+        var query : String = s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                transaction_id STRING,
+                customer_id STRING,
+                product_id STRING,
+                product_name STRING,
+                price DECIMAL(10,2),
+                quantity DECIMAL(10,2),
+                total_amount DECIMAL(10, 2),
+                event_time STRING
+            )
+            USING hudi
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """ 
+        spark.sql(query)
+    }
+
+    def writeStream(df : DataFrame, checkpoint : String, dbName : String, tableName : String, tablePath : String): Unit = {
+        df.writeStream.format("hudi")
+            .outputMode("append")
+            .option("checkpointLocation", checkpoint)
+            .trigger(Trigger.ProcessingTime("5 seconds"))
+            .option("hoodie.datasource.write.table.type", "MERGE_ON_READ")
+            .option("hoodie.datasource.hive_sync.enable", "true")
+            .option("hoodie.datasource.hive_sync.database", dbName)
+            .option("hoodie.datasource.hive_sync.table", tableName)
+            .option("hoodie.datasource.hive_sync.mode", "hms") 
+            .option("hoodie.datasource.hive_sync.metastore.uris", "thrift://metastore:9083")
+            .option("hoodie.datasource.hive_sync.partition_fields", "")
+            .option("hoodie.datasource.hive_sync.partition_extractor_class", "org.apache.hudi.hive.NonPartitionedExtractor")
+            .option("hoodie.table.name", tableName)
+            .toTable(s"$dbName.$tableName"); // không dùng start
+            // .start(tablePath)
+    }
+
+    def readStreamTable(tablePath : String) : DataFrame = {
+        var streamDf = spark.readStream.format("hudi")
+                            .load(tablePath);
+        return streamDf;
+    } 
 }

@@ -1,4 +1,4 @@
-package extracts
+package extractors
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame

@@ -1,9 +1,16 @@
+from decimal import Decimal
 import json
 
 from confluent_kafka import Producer
 from dataclasses import dataclass
 
 from common.logger import log
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj) # Hoặc str(obj) nếu bạn muốn giữ độ chính xác tuyệt đối
+        return super(DecimalEncoder, self).default(obj)
 
 @dataclass
 class KafkaService:
@@ -21,5 +28,5 @@ class KafkaService:
             log.info(f"Message sent to {msg.topic()}")
 
     def send_msg(self, topic : str, message: dict, key : str) -> None:
-        self.producer.produce(topic, json.dumps(message), on_delivery=self.__callback, key=key)
+        self.producer.produce(topic, json.dumps(message, cls=DecimalEncoder), on_delivery=self.__callback, key=key)
         self.producer.flush()
