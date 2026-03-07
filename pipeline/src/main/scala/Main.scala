@@ -28,6 +28,7 @@ object Main extends App {
     val RAW_2_BRONZE_TOPIC : String = "raw-2-bronze-topic";
     val BRONZE_2_SILVER_TOPIC :  String = "bronze-2-silver";
     val SILVER_2_GOLD_TOPIC : String = "silver-2-gold";
+    val RAW_CUSTOMER_TOPIC : String = "e-commerce-customer.public.customer";
 
     val CHECKPOINT_BRONZE : String = s"s3a://$BUCKET/checkpoints/bronze_raw/";
     val CHECKPOINT_SILVER : String = s"s3a://$BUCKET/checkpoints/silver_transaction/";
@@ -64,10 +65,12 @@ object Main extends App {
 
     // Extract
     var rawStreamDf = kafkaExtractor.extractStreamKafka(topic = RAW_2_BRONZE_TOPIC);    
-    
+    var customerStreamDf = kafkaExtractor.extractStreamKafka(topic = RAW_CUSTOMER_TOPIC);
+
+    var unionDf = rawStreamDf.union(customerStreamDf);
     // Load
     // Load data into raw
-    hudiService.writeStream(rawStreamDf, CHECKPOINT_BRONZE, rawDb, rawTable, s"s3a://$BUCKET/bronze/raw_table/");
+    hudiService.writeStream(unionDf, CHECKPOINT_BRONZE, rawDb, rawTable, s"s3a://$BUCKET/bronze/raw_table/");
 
     // Transform
     var rawDf = hudiService.readStreamTable(s"s3a://$BUCKET/bronze/raw_table/");

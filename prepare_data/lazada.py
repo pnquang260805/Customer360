@@ -35,23 +35,6 @@ def main():
     connector = PostgresConnector(db_name, username, password, host, port)
     print("connected")
 
-    create_table_query = f"""
-    CREATE TABLE IF NOT EXISTS {table_name}( 
-        product_id SERIAL NOT NULL PRIMARY KEY,
-        product_name TEXT,
-        product_link TEXT,
-        price DECIMAL(10,2),
-        base_price DECIMAL(10, 2),
-        currency VARCHAR(10),
-        sale_percents VARCHAR(50),
-        product_type VARCHAR(100)
-    )
-    """
-    curr = connector.cursor
-    curr.execute(create_table_query)
-    conn = connector.conn
-    conn.commit()
-
     columns = ['product_name', 'product_link', 'price', "base_price", 'currency', 'sale_percents', 'product_type']
     for product in data:
         product_name = product.get("product_name", None)

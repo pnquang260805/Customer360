@@ -117,6 +117,7 @@ services:
       - project-net
     volumes:
       - ./docker-data/postgres:/var/lib/postgresql/data
+    command: ["postgres", "-c", "wal_level=logical"]
 
   kafka:
     image: apache/kafka:4.1.0
@@ -163,6 +164,9 @@ services:
     command: >
       sh -c "/opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic raw-2-bronze-topic --bootstrap-server kafka:29092 &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic silver-2-gold-topic --bootstrap-server kafka:29092 &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_configs --bootstrap-server kafka:29092 &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_offsets --bootstrap-server kafka:29092 &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_status --bootstrap-server kafka:29092 &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic bronze-2-silver-topic --bootstrap-server kafka:29092"
     networks:
       - project-net
@@ -224,3 +228,32 @@ services:
       - ./config/trino/etc:/etc/trino
     networks:
       - project-net
+  
+  debezium:
+    image: debezium/connect:3.0.0.Final
+    container_name: debezium
+    networks:
+      - project-net
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres
+      - kafka
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=debezium_connect_configs
+      - OFFSET_STORAGE_TOPIC=debezium_connect_offsets
+      - STATUS_STORAGE_TOPIC=debezium_connect_status
+  
+  setup:
+    image: setup
+    container_name: setup
+    build: 
+      context: ./others
+      dockerfile: ./Dockerfile
+    networks:
+      - project-net
+    depends_on:
+      - postgres
+      - debezium

@@ -1,9 +1,0 @@
-gspread
-google-auth-oauthlib
-boto3
-google-auth-httplib2
-pandas
-google-api-python-client
-python-dotenv
-openpyxl
-streamlit

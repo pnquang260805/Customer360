@@ -4,6 +4,7 @@
     },
     "java.project.sourcePaths": [],
     "cSpell.words": [
+        "debezium",
         "trino",
         "trinodb"
     ]

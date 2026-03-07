@@ -75,25 +75,6 @@ def main() -> None:
 
     connector = PostgresConnector(db_name, username, password, host, port)
 
-    create_table_query = f"""
-    CREATE TABLE IF NOT EXISTS {table_name}( 
-        customer_id VARCHAR(50) PRIMARY KEY,
-        first_name VARCHAR(50),
-        last_name VARCHAR(50),
-        gender VARCHAR(10),
-        date_of_birth DATE,
-        email VARCHAR(50),
-        phone_number VARCHAR(50),
-        address TEXT,
-        country VARCHAR(50),
-        creation_date DATE
-    )
-    """
-    curr = connector.cursor
-    curr.execute(create_table_query)
-    conn = connector.conn
-    conn.commit()
-
     for _ in range(1000):
         (k, v) = random.choice(list(LOCALES.items()))
 
