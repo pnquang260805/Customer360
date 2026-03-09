@@ -37,6 +37,39 @@ class HudiService(spark : SparkSession){
                 event_time STRING
             )
             USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'transaction_id',
+                orderingFields = 'event_time',
+                recordMergeMode = 'EVENT_TIME_ORDERING'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """ 
+        spark.sql(query)
+    }
+
+    def createSilverCustomer(dbName : String, tableName : String, location : String): Unit = {
+        var query : String = s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                customer_sk INT,
+                customer_id STRING,
+                first_name STRING,
+                last_name STRING,
+                gender STRING,
+                date_of_birth DATE,
+                email STRING,
+                phone_number STRING,
+                country STRING,
+                customer_creation_date DATE,
+                effective_date DATE,
+                expired_date DATE,
+                is_current BOOLEAN
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'customer_sk',
+            )
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """ 
         spark.sql(query)

@@ -55,6 +55,7 @@ object Main extends App {
     var catalogName : String = "hudi"
     var silverDb : String = "silver";
     var silverTransactionTable : String = "silver_transaction";
+    var silverCustomerTable : String = "silver_customer";
 
     // Initiate database
     hudiService.createDatabase(rawDb, s"s3a://$BUCKET/bronze/raw_db/");
@@ -62,6 +63,7 @@ object Main extends App {
 
     hudiService.createDatabase(silverDb,  s"s3a://$BUCKET/silver/silver_db/");
     hudiService.createSilverTransaction(silverDb, silverTransactionTable, s"s3a://$BUCKET/silver/silver_transaction/");
+    hudiService.createSilverCustomer(silverDb, silverCustomerTable, s"s3a://$BUCKET/silver/silver_customer");
 
     // Extract
     var rawStreamDf = kafkaExtractor.extractStreamKafka(topic = RAW_2_BRONZE_TOPIC);    
