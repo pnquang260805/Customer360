@@ -257,3 +257,12 @@ services:
     depends_on:
       - postgres
       - debezium
+
+  # jupyter:
+  #   image: jupyter/base-notebook:python-3.10
+  #   networks:
+  #     - project-net
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - ./notebook:/home/jovyan/work
