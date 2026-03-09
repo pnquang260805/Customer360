@@ -164,9 +164,9 @@ services:
     command: >
       sh -c "/opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic raw-2-bronze-topic --bootstrap-server kafka:29092 &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic silver-2-gold-topic --bootstrap-server kafka:29092 &&
-             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_configs --bootstrap-server kafka:29092 &&
-             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_offsets --bootstrap-server kafka:29092 &&
-             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_status --bootstrap-server kafka:29092 &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_configs --bootstrap-server kafka:29092 --partitions 1 --config cleanup.policy=compact &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_offsets --bootstrap-server kafka:29092 --partitions 1 --config cleanup.policy=compact &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_status --bootstrap-server kafka:29092  --partitions 1 --config cleanup.policy=compact &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic bronze-2-silver-topic --bootstrap-server kafka:29092"
     networks:
       - project-net
