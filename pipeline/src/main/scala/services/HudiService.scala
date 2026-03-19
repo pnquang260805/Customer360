@@ -68,7 +68,7 @@ class HudiService(spark : SparkSession){
             USING hudi
             TBLPROPERTIES (
                 type = 'mor', -- Merge on read
-                primaryKey = 'customer_sk',
+                primaryKey = 'customer_sk'
             )
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """ 
