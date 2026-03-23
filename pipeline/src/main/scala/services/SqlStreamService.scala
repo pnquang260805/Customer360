@@ -27,17 +27,13 @@ class SqlStreamService {
         // val columnListString = columns.mkString(", ");
         val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
             if(!batchDf.isEmpty){
+                val customerIds = batchDf.select("customer_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
                 val mergeQuery : String = s"""
                     -- Step 1: Merge and set
-                    MERGE INTO $customerTable AS target
-                    USING $customerTempView AS source
-                    ON target.customer_id = source.customer_id AND target.is_current = true
-                    WHEN MATCHED THEN
-                        UPDATE SET 
-                            target.expired_date = current_date(),
-                            target.is_current = false,
-                            target.creation_date = source.creation_date
-                """;
+                    UPDATE $customerTable 
+                    SET is_current = false, expired_date = current_date()
+                    WHERE customer_id IN ($customerIds) AND is_current = true
+                    """;
 
                 val insertQuery: String = s"""
                     INSERT INTO $customerTable
