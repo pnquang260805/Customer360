@@ -22,7 +22,7 @@ object Main extends App {
     //region Spark
     var sparkConf = new SparkConfig("spark://master:7077")
     sparkConf.configS3(configVars.S3_ACCESS_KEY, configVars.S3_SECRET_KEY)
-    sparkConf.configNeo4j(configVars.NEO4J_URL, configVars.NEO4J_USERNAME, configVars.NEO4J_PASSWORD, configVars.NEO4J_DBNAME)
+    // sparkConf.configNeo4j(configVars.NEO4J_URL, configVars.NEO4J_USERNAME, configVars.NEO4J_PASSWORD, configVars.NEO4J_DBNAME)
     
     val spark = SparkSession.builder().config(sparkConf.getConf()).enableHiveSupport().getOrCreate();
 
