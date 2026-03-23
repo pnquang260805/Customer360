@@ -51,7 +51,7 @@ class HudiService(spark : SparkSession){
     def createSilverCustomer(dbName : String, tableName : String, location : String): Unit = {
         var query : String = s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
-                customer_sk INT,
+                -- customer_sk STRING,
                 customer_id STRING,
                 first_name STRING,
                 last_name STRING,
@@ -60,7 +60,7 @@ class HudiService(spark : SparkSession){
                 email STRING,
                 phone_number STRING,
                 country STRING,
-                customer_creation_date DATE,
+                creation_date DATE,
                 effective_date DATE,
                 expired_date DATE,
                 is_current BOOLEAN
@@ -68,7 +68,8 @@ class HudiService(spark : SparkSession){
             USING hudi
             TBLPROPERTIES (
                 type = 'mor', -- Merge on read
-                primaryKey = 'customer_sk'
+                primaryKey = 'customer_id',
+                precombineField = 'creation_date'
             )
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """ 

@@ -258,17 +258,17 @@ services:
       - postgres
       - debezium
 
-  notebook:
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/notebook.dockerfile
-    image: my-notebook
-    container_name: notebook
-    networks:
-      - project-net
-    ports:
-      - "8888:8888"
-    volumes:
-      - ./work:/home/jovyan/work
-    environment:
-      - JUPYTER_TOKEN=26082005qa
+  # notebook:
+  #   build: 
+  #     context: .
+  #     dockerfile: ./dockerfiles/notebook.dockerfile
+  #   image: my-notebook
+  #   container_name: notebook
+  #   networks:
+  #     - project-net
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - ./work:/home/jovyan/work
+  #   environment:
+  #     - JUPYTER_TOKEN=26082005qa

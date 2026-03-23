@@ -11,6 +11,8 @@ import extractors.ExtractKafka
 import config.SparkConfig
 import extractors.ExtractKafka
 import config.{ConfigVariables, DatalakeConfig}
+import transformers.TransformCustomerSilver
+import services.SqlStreamService
 
 object Main extends App {
     // Base variables
@@ -22,7 +24,7 @@ object Main extends App {
     sparkConf.configS3(configVars.S3_ACCESS_KEY, configVars.S3_SECRET_KEY)
     sparkConf.configNeo4j(configVars.NEO4J_URL, configVars.NEO4J_USERNAME, configVars.NEO4J_PASSWORD, configVars.NEO4J_DBNAME)
     
-    val spark = SparkSession.builder().config(sparkConf.getConf()).getOrCreate();
+    val spark = SparkSession.builder().config(sparkConf.getConf()).enableHiveSupport().getOrCreate();
 
     spark.sparkContext.setLogLevel("WARN");
     import spark.implicits._
@@ -31,6 +33,8 @@ object Main extends App {
     // region Initial dependencies
     var hudiService : HudiService = new HudiService(spark);
     var kafkaExtractor: ExtractKafka = new ExtractKafka(spark, configVars.KAFKA_BOOTSTRAP);
+    var transformCustomerSilver : TransformCustomerSilver = new TransformCustomerSilver();
+    var sqlService : SqlStreamService = new SqlStreamService();
     // var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver();
     // endregion
 
@@ -59,6 +63,10 @@ object Main extends App {
     var rawDf = hudiService.readStreamTable(s"s3a://${configVars.BUCKET}/bronze/raw_table/");
     // rawDf.writeStream.format("console").start(); // for debug
     var customerDf = rawDf.filter(col("key") === "customer");
+
+    var stgCustomerSilver : DataFrame = transformCustomerSilver.stgSilver(customerDf);
+    sqlService.mergeCustomerSilver(stgCustomerSilver, s"${datalakeConf.silverDb}.${datalakeConf.silverCustomerTable}")
+    // stgCustomerSilver.writeStream.format("console").start();
 
     spark.streams.awaitAnyTermination();
 }

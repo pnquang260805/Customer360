@@ -2,12 +2,13 @@ package transformers
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{StructType, StructField}
-import org.apache.spark.sql.functions.{col, from_json, when, lit}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import interfaces.Transform
+import java.time.LocalDate
 
 class TransformCustomerSilver extends Transform{
-    def transformFromRaw(rawDf: DataFrame): DataFrame = {
+    def stgSilver(rawDf: DataFrame): DataFrame = {
         val dataSchema = StructType(Seq(
             StructField("customer_id", StringType, true),
             StructField("first_name", StringType, true),
@@ -30,14 +31,16 @@ class TransformCustomerSilver extends Transform{
 
         var rawCustomer : DataFrame = rawDf.where(col("key") === "customer").select("value");
         var customerDf : DataFrame = rawCustomer.select(from_json(col("value").cast(StringType), cdcSchema).alias("after_value"))
-        var explodedDf : DataFrame = customerDf.select(col("after_value.*"))
+        var explodedDf : DataFrame = customerDf.select(col("after_value.after.*"))
 
-        var droppedCustomer : DataFrame = explodedDf.na.drop(how="any", cols = Seq("customer_id")).dropDuplicates();
-
-        return null;
-    }
+        var droppedCustomer : DataFrame = explodedDf;
+        var finalDf : DataFrame = droppedCustomer
+                                    .withColumn("date_of_birth", from_unixtime(col("date_of_birth") * 86400, "yyyy-MM-dd").cast("date"))
+                                    .withColumn("creation_date", from_unixtime(col("creation_date") * 86400, "yyyy-MM-dd").cast("date"))
+        return finalDf;
+    }    
     
-    def transformFromSilver(silverDf: DataFrame): DataFrame = {
+    def stgGold(silverDf: DataFrame): DataFrame = {
         return null;
     }
     
