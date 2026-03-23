@@ -44,8 +44,8 @@ object Main extends App {
 
     hudiService.createDatabase(datalakeConf.silverDb,  s"s3a://${configVars.BUCKET}/silver/silver_db/");
     hudiService.createSilverTransaction(datalakeConf.silverDb, datalakeConf.silverTransactionTable, s"s3a://${configVars.BUCKET}/silver/silver_transaction/");
-
     hudiService.createSilverCustomer(datalakeConf.silverDb, datalakeConf.silverCustomerTable, s"s3a://${configVars.BUCKET}/silver/silver_customer");
+    hudiService.createDimProduct(datalakeConf.silverDb, datalakeConf.dimProduct, s"s3a://${configVars.BUCKET}/silver/dim_product");
 
     // Extract   
     var customerStreamDf = kafkaExtractor.extractStreamKafka(topic = configVars.RAW_CUSTOMER_TOPIC);
@@ -67,6 +67,9 @@ object Main extends App {
     var stgCustomerSilver : DataFrame = transformCustomerSilver.stgSilver(customerDf);
     sqlService.mergeCustomerSilver(stgCustomerSilver, s"${datalakeConf.silverDb}.${datalakeConf.silverCustomerTable}")
     // stgCustomerSilver.writeStream.format("console").start();
+
+    // Product
+
 
     spark.streams.awaitAnyTermination();
 }

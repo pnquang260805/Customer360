@@ -7,4 +7,5 @@ class DatalakeConfig{
     var silverDb : String = "silver";
     var silverTransactionTable : String = "silver_transaction";
     var silverCustomerTable : String = "silver_customer";
+    var dimProduct : String = "dim_product";
 }
