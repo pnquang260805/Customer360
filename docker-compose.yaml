@@ -164,9 +164,15 @@ services:
     command: >
       sh -c "/opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic raw-2-bronze-topic --bootstrap-server kafka:29092 &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic silver-2-gold-topic --bootstrap-server kafka:29092 &&
+<<<<<<< HEAD
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_configs --bootstrap-server kafka:29092 --partitions 1 --config cleanup.policy=compact &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_offsets --bootstrap-server kafka:29092 --partitions 1 --config cleanup.policy=compact &&
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_status --bootstrap-server kafka:29092  --partitions 1 --config cleanup.policy=compact &&
+=======
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_configs --bootstrap-server kafka:29092 --cleanup.policy=compact &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_offsets --bootstrap-server kafka:29092 -- cleanup.policy=compact &&
+             /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic debezium_connect_status --bootstrap-server kafka:29092 --cleanup.policy=compact &&
+>>>>>>> test
              /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic bronze-2-silver-topic --bootstrap-server kafka:29092"
     networks:
       - project-net
@@ -258,11 +264,17 @@ services:
       - postgres
       - debezium
 
-  # jupyter:
-  #   image: jupyter/base-notebook:python-3.10
+  # notebook:
+  #   build: 
+  #     context: .
+  #     dockerfile: ./dockerfiles/notebook.dockerfile
+  #   image: my-notebook
+  #   container_name: notebook
   #   networks:
   #     - project-net
   #   ports:
   #     - "8888:8888"
   #   volumes:
-  #     - ./notebook:/home/jovyan/work
+  #     - ./work:/home/jovyan/work
+  #   environment:
+  #     - JUPYTER_TOKEN=26082005qa

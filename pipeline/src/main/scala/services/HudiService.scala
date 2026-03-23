@@ -37,6 +37,40 @@ class HudiService(spark : SparkSession){
                 event_time STRING
             )
             USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'transaction_id',
+                orderingFields = 'event_time',
+                recordMergeMode = 'EVENT_TIME_ORDERING'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """ 
+        spark.sql(query)
+    }
+
+    def createSilverCustomer(dbName : String, tableName : String, location : String): Unit = {
+        var query : String = s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                -- customer_sk STRING,
+                customer_id STRING,
+                first_name STRING,
+                last_name STRING,
+                gender STRING,
+                date_of_birth DATE,
+                email STRING,
+                phone_number STRING,
+                country STRING,
+                creation_date DATE,
+                effective_date DATE,
+                expired_date DATE,
+                is_current BOOLEAN
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'customer_id',
+                precombineField = 'creation_date'
+            )
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """ 
         spark.sql(query)
@@ -65,4 +99,31 @@ class HudiService(spark : SparkSession){
                             .load(tablePath);
         return streamDf;
     } 
+
+        def createDimProduct(dbName : String, tableName : String, location : String): Unit = {
+        var query : String = s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                product_sk STRING,
+                product_id STRING,
+                product_name STRING,
+                product_link STRING,
+                price DECIMAL(10, 2),
+                base_price DECIMAL(10, 2),
+                currency STRING,
+                sale_percents STRING,
+                product_type STRING,
+                effective_date DATE,
+                expired_date DATE,
+                is_current BOOLEAN
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'product_sk',
+                precombineField = 'effective_date'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """ 
+        spark.sql(query)
+    }
 }
