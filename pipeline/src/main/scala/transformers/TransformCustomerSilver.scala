@@ -37,6 +37,7 @@ class TransformCustomerSilver extends Transform{
         var finalDf : DataFrame = droppedCustomer
                                     .withColumn("date_of_birth", from_unixtime(col("date_of_birth") * 86400, "yyyy-MM-dd").cast("date"))
                                     .withColumn("creation_date", from_unixtime(col("creation_date") * 86400, "yyyy-MM-dd").cast("date"))
+                                    .withColumn("customer_sk", uuid().cast("string"))
         return finalDf;
     }    
     

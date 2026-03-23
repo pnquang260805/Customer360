@@ -42,7 +42,7 @@ class SqlStreamService {
                 val insertQuery: String = s"""
                     INSERT INTO $customerTable
                     SELECT 
-                        -- customer_sk,
+                        customer_sk,
                         customer_id,
                         first_name,
                         last_name,
