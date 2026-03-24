@@ -80,6 +80,8 @@ services:
           memory: 1g
     volumes:
       - ./pipeline/target:/opt/spark/work-dir/jars
+    env_file:
+      - .env_cloud
     
   
   worker1:
@@ -103,6 +105,8 @@ services:
           memory: 1g
     ports:
       - "8081:8081"
+    env_file:
+      - .env_cloud
 
   postgres:
     container_name: postgres
@@ -118,6 +122,12 @@ services:
     volumes:
       - ./docker-data/postgres:/var/lib/postgresql/data
     command: ["postgres", "-c", "wal_level=logical"]
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB'"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
 
   kafka:
     image: apache/kafka:4.1.0
@@ -245,6 +255,11 @@ services:
       - CONFIG_STORAGE_TOPIC=debezium_connect_configs
       - OFFSET_STORAGE_TOPIC=debezium_connect_offsets
       - STATUS_STORAGE_TOPIC=debezium_connect_status
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/connectors"]
+      interval: 60s
+      timeout: 30s
+      retries: 10
   
   setup:
     image: setup
@@ -255,8 +270,11 @@ services:
     networks:
       - project-net
     depends_on:
-      - postgres
-      - debezium
+      postgres:
+        condition: service_healthy
+      debezium:
+        condition: service_healthy
+
 
   # notebook:
   #   build: 
