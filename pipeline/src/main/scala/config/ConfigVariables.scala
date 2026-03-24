@@ -12,6 +12,7 @@ class ConfigVariables {
     val SILVER_2_GOLD_TOPIC : String = "silver-2-gold";
     val RAW_CUSTOMER_TOPIC : String = "e-commerce-customer.public.customer";
     val PRODUCT_TOPIC : String = "e-commerce-product.public.product";
+    val EVENT_TOPIC : String = "e-commerce-event.public.event";
 
     val CHECKPOINT_BRONZE : String = s"s3a://$BUCKET/checkpoints/bronze_raw/";
     val CHECKPOINT_SILVER : String = s"s3a://$BUCKET/checkpoints/silver_transaction/";

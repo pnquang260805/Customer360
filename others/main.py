@@ -1,6 +1,7 @@
 import requests
 import psycopg2
 
+
 def setup_debezium():
     debezium_url = "http://debezium:8083/connectors"
     POSTGRES_USER = "postgres"
@@ -12,12 +13,13 @@ def setup_debezium():
     tables = [
         {"name": "customer", "key": "customer"},
         {"name": "product", "key": "product"},
-        {"name": "transaction", "key": "transaction"}
+        {"name": "transaction", "key": "transaction"},
+        {"name": "event", "key": "event"},
     ]
 
     for table in tables:
         connector_name = f"{table['name']}-connector"
-        
+
         config = {
             "name": connector_name,
             "config": {
@@ -30,25 +32,19 @@ def setup_debezium():
                 "database.server.name": "postgres_server",
                 "table.include.list": f"public.{table['name']}",
                 "plugin.name": "pgoutput",
-                
                 "slot.name": f"debezium_slot_{table['name']}",
                 "publication.name": f"debezium_pub_{table['name']}",
-                
-                "topic.prefix": f"e-commerce-{table['key']}", # 1 connector chỉ có 1 prefix
-
+                "topic.prefix": f"e-commerce-{table['key']}",  # 1 connector chỉ có 1 prefix
                 "key.converter": "org.apache.kafka.connect.storage.StringConverter",
                 "value.converter": "org.apache.kafka.connect.json.JsonConverter",
                 "value.converter.schemas.enable": "false",
-
                 "transforms": "AddStaticKey,ExtractStaticKey",
-
                 "transforms.AddStaticKey.type": "org.apache.kafka.connect.transforms.InsertField$Key",
                 "transforms.AddStaticKey.static.field": "temp_key",
-                "transforms.AddStaticKey.static.value": table['key'],
-
+                "transforms.AddStaticKey.static.value": table["key"],
                 "transforms.ExtractStaticKey.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
-                "transforms.ExtractStaticKey.field": "temp_key"
-            }
+                "transforms.ExtractStaticKey.field": "temp_key",
+            },
         }
         requests.delete(f"{debezium_url}/{connector_name}")
         try:
@@ -59,7 +55,7 @@ def setup_debezium():
                 print(f"Failed to create {table['name']}: {r.text}")
         except Exception as e:
             print(f"Error connecting to Debezium: {e}")
-    
+
 
 def setup_postgres():
     username = "postgres"
@@ -68,7 +64,9 @@ def setup_postgres():
     port = 5432
     db_name = "store"
 
-    conn = psycopg2.connect(database=db_name, user=username, password=password, host=host, port=port)
+    conn = psycopg2.connect(
+        database=db_name, user=username, password=password, host=host, port=port
+    )
     print("Connected")
     curr = conn.cursor()
     create_product_table = f"""
@@ -121,6 +119,7 @@ def setup_postgres():
     conn.commit()
 
     conn.close()
+
 
 if __name__ == "__main__":
     try:

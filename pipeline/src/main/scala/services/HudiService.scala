@@ -80,7 +80,7 @@ class HudiService(spark : SparkSession){
         df.writeStream.format("hudi")
             .outputMode("append")
             .option("checkpointLocation", checkpoint)
-            .trigger(Trigger.ProcessingTime("3 seconds"))
+            .trigger(Trigger.ProcessingTime("10 seconds"))
             .option("hoodie.datasource.write.table.type", "MERGE_ON_READ")
             .option("hoodie.datasource.hive_sync.enable", "true")
             .option("hoodie.datasource.hive_sync.database", dbName)

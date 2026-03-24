@@ -13,30 +13,31 @@ import extractors.ExtractKafka
 import config.{ConfigVariables, DatalakeConfig}
 import transformers.TransformCustomerSilver
 import services.SqlStreamService
+import services.Neo4jService
+import services.ERService
 
 object Main extends App {
     // Base variables
     val configVars = new ConfigVariables()
     val datalakeConf = new DatalakeConfig()
 
-    //region Spark
+    // Spark
     var sparkConf = new SparkConfig("spark://master:7077")
     sparkConf.configS3(configVars.S3_ACCESS_KEY, configVars.S3_SECRET_KEY)
-    // sparkConf.configNeo4j(configVars.NEO4J_URL, configVars.NEO4J_USERNAME, configVars.NEO4J_PASSWORD, configVars.NEO4J_DBNAME)
     
     val spark = SparkSession.builder().config(sparkConf.getConf()).enableHiveSupport().getOrCreate();
 
     spark.sparkContext.setLogLevel("WARN");
     import spark.implicits._
-    //endregion
 
-    // region Initial dependencies
+    //Initial dependencies
     var hudiService : HudiService = new HudiService(spark);
     var kafkaExtractor: ExtractKafka = new ExtractKafka(spark, configVars.KAFKA_BOOTSTRAP);
     var transformCustomerSilver : TransformCustomerSilver = new TransformCustomerSilver();
     var sqlService : SqlStreamService = new SqlStreamService();
+    var neo4jService : Neo4jService = new Neo4jService(spark);
+    var erService : ERService = new ERService(neo4jService, spark);
     // var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver();
-    // endregion
 
     // Initiate database
     hudiService.createDatabase(datalakeConf.rawDb, s"s3a://${configVars.BUCKET}/bronze/raw_db/");
@@ -49,8 +50,9 @@ object Main extends App {
 
     // Extract   
     var customerStreamDf = kafkaExtractor.extractStreamKafka(topic = configVars.RAW_CUSTOMER_TOPIC);
+    var eventStreamDf = kafkaExtractor.extractStreamKafka(configVars.EVENT_TOPIC);
 
-    var unionDf = customerStreamDf;
+    var unionDf = customerStreamDf.union(eventStreamDf);
     // Load
     // Load data into raw
     hudiService.writeStream(unionDf, 
@@ -65,6 +67,7 @@ object Main extends App {
     var customerDf = rawDf.filter(col("key") === "customer");
 
     var stgCustomerSilver : DataFrame = transformCustomerSilver.stgSilver(customerDf);
+    erService.writeCustomerGraph(stgCustomerSilver);
     sqlService.mergeCustomerSilver(stgCustomerSilver, s"${datalakeConf.silverDb}.${datalakeConf.silverCustomerTable}")
     // stgCustomerSilver.writeStream.format("console").start();
 
