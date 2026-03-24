@@ -108,7 +108,7 @@ class SqlStreamService {
         productDf.writeStream
                 .foreachBatch(batchProcess)
                 .outputMode("update")
-                .option("checkpointLocation", s"s3a://${configVars.BUCKET}/silver/dim_product")
+                .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/dim_product") 
                 .start();
     }
 }
