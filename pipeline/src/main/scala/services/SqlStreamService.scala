@@ -65,4 +65,50 @@ class SqlStreamService {
                 .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/customer_silver")
                 .start();
     }
+    
+    def mergeProductDim(productDf : DataFrame, productTable: String): Unit = {
+        var productTempView : String = "productStg";
+        
+        val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
+            if(!batchDf.isEmpty){
+                
+                val productIds = batchDf.select("product_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
+                
+                val mergeQuery : String = s"""
+                    -- Step 1: Merge and set
+                    UPDATE $productTable 
+                    SET is_current = false, expired_date = current_date()
+                    WHERE product_id IN ($productIds) AND is_current = true
+                    """;
+
+                val insertQuery: String = s"""
+                    INSERT INTO $productTable
+                    SELECT 
+                        product_sk,
+                        product_id,
+                        product_name,
+                        product_link,
+                        price,
+                        base_price,
+                        currency,
+                        sale_percents,
+                        product_type,
+                        current_date() AS effective_date, 
+                        CAST('9999-12-31' AS DATE) AS expired_date, 
+                        true AS is_current
+                    FROM $productTempView
+                """;
+
+                batchDf.createOrReplaceTempView(productTempView);
+                batchDf.sparkSession.sql(mergeQuery);
+                batchDf.sparkSession.sql(insertQuery);
+            }
+        };
+        
+        productDf.writeStream
+                .foreachBatch(batchProcess)
+                .outputMode("update")
+                .option("checkpointLocation", s"s3a://${configVars.BUCKET}/silver/dim_product")
+                .start();
+    }
 }
