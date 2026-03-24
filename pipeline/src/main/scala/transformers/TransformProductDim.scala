@@ -7,6 +7,7 @@ import org.apache.spark.sql.expressions.UserDefinedFunction
 import interfaces.Transform
 import java.util.Base64
 import java.math.{BigDecimal, BigInteger}
+import objects.TransformUtils
 
 class TransformProductSilver extends Transform {
 
@@ -15,16 +16,16 @@ class TransformProductSilver extends Transform {
   //   - unscaledValue: big-endian signed bytes → encode Base64
   //   - scale được biết trước từ schema (ở đây là 2)
   // Ví dụ: price=800.00 → unscaled=80000 → bytes=[0x01,0x38,0x80] → Base64="ATiA"
-  private val SCALE = 2
+  // private val SCALE = 2
 
-  private val decodeDecimalUdf: UserDefinedFunction = udf((base64Str: String) => {
-    if (base64Str == null) null.asInstanceOf[java.math.BigDecimal]
-    else {
-      val bytes      = Base64.getDecoder.decode(base64Str)
-      val unscaled   = new BigInteger(bytes)           // big-endian signed
-      new BigDecimal(unscaled, SCALE)
-    }
-  }, DecimalType(10, 2))
+  // private val decodeDecimalUdf: UserDefinedFunction = udf[java.math.BigDecimal, String]((base64Str: String) => {
+  //   if (base64Str == null) null.asInstanceOf[java.math.BigDecimal]
+  //   else {
+  //     val bytes      = Base64.getDecoder.decode(base64Str)
+  //     val unscaled   = new BigInteger(bytes)           // big-endian signed
+  //     new BigDecimal(unscaled, SCALE)
+  //   }
+  // })
 
   def stgSilver(rawDf: DataFrame): DataFrame = {
 
@@ -58,8 +59,8 @@ class TransformProductSilver extends Transform {
     // Bước 3: decode Base64 → DECIMAL, cast product_id, thêm product_sk
     explodedDf
       .withColumn("product_id",   col("product_id").cast(StringType))
-      .withColumn("price",        decodeDecimalUdf(col("price")))
-      .withColumn("base_price",   decodeDecimalUdf(col("base_price")))
+      .withColumn("price",        TransformUtils.decodeDecimalUdf(col("price")))
+      .withColumn("base_price",   TransformUtils.decodeDecimalUdf(col("base_price")))
       .withColumn("product_sk",   uuid().cast(StringType))
   }
 

@@ -13,6 +13,7 @@ import extractors.ExtractKafka
 import config.{ConfigVariables, DatalakeConfig}
 import transformers.TransformCustomerSilver
 import services.SqlStreamService
+import transformers.TransformProductSilver
 
 object Main extends App {
     // Base variables
@@ -35,6 +36,7 @@ object Main extends App {
     var kafkaExtractor: ExtractKafka = new ExtractKafka(spark, configVars.KAFKA_BOOTSTRAP);
     var transformCustomerSilver : TransformCustomerSilver = new TransformCustomerSilver();
     var sqlService : SqlStreamService = new SqlStreamService();
+    var transformProduct: TransformProductSilver = new TransformProductSilver();
     // var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver();
     // endregion
 
@@ -49,8 +51,8 @@ object Main extends App {
 
     // Extract   
     var customerStreamDf = kafkaExtractor.extractStreamKafka(topic = configVars.RAW_CUSTOMER_TOPIC);
-
-    var unionDf = customerStreamDf;
+    var productStreamDf = kafkaExtractor.extractStreamKafka(configVars.PRODUCT_TOPIC);
+    var unionDf = customerStreamDf.union(productStreamDf);
     // Load
     // Load data into raw
     hudiService.writeStream(unionDf, 
@@ -69,7 +71,8 @@ object Main extends App {
     // stgCustomerSilver.writeStream.format("console").start();
 
     // Product
-    
-
+    var productDf : DataFrame = rawDf.filter(col("key") === "product");
+    var stgDimProduct : DataFrame = transformProduct.stgSilver(productDf);
+    sqlService.mergeProductDim(stgDimProduct, s"${datalakeConf.silverDb}.${datalakeConf.dimProduct}");
     spark.streams.awaitAnyTermination();
 }
