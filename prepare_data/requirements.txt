@@ -1,9 +1,0 @@
-selenium
-beautifulsoup4
-fake-useragent
-undetected-chromedriver
-psycopg2-binary
-faker
-snowflake-id
-pandas
-confluent-kafka

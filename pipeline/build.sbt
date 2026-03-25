@@ -20,7 +20,7 @@ lazy val root = project
     libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.4",
     libraryDependencies += "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.262",
     libraryDependencies += "org.apache.hudi" %% "hudi-spark3.5-bundle" % "1.0.0",
-    libraryDependencies += "org.neo4j" %% "neo4j-connector-apache-spark" % "5.4.0_for_spark_3",
+    libraryDependencies += "org.mongodb.spark" %% "mongo-spark-connector" % "10.6.0",
 
     libraryDependencies += "io.github.cdimascio" % "dotenv-java" % "2.3.2"
   )

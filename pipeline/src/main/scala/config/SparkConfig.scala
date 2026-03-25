@@ -17,13 +17,12 @@ class SparkConfig(master : String, appName : String = "pipeline"){
                 .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                 .set("hive.metastore.uris", "thrift://metastore:9083")
                 .set("spark.sql.catalogImplementation", "hive")
-    }
-
-    def configNeo4j(neo4jUrl : String, username : String, password : String, dbName : String): Unit = {
-        this.conf.set("neo4j.url", neo4jUrl)
-            .set("neo4j.authentication.basic.username", username)
-            .set("neo4j.authentication.basic.password", password)
-            .set("neo4j.database", dbName);
+                .set("fs.s3a.impl.disable.cache", "true")
+                .set("fs.automatic.close", "false")
+                .set("spark.hadoop.fs.s3a.connection.maximum", "500")
+                .set("spark.hadoop.fs.s3a.threads.max", "256")
+                .set("spark.hadoop.fs.s3a.impl.disable.cache", "true")
+                .set("spark.hadoop.fs.automatic.close", "false")
     }
 
     def getConf() : SparkConf = {

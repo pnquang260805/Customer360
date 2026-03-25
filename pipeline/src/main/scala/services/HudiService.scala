@@ -3,8 +3,14 @@ package services
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.streaming.Trigger
+import config.{ConfigVariables, DatalakeConfig}
 
 class HudiService(spark : SparkSession){
+    val configVars = new ConfigVariables();
+    val datalakeConf = new DatalakeConfig();
+
+    private def getUuid(): String = java.util.UUID.randomUUID.toString;
+
     def createDatabase(dbName : String, location : String): Unit ={
         var query : String = s"CREATE DATABASE IF NOT EXISTS $dbName LOCATION '$location'";
         spark.sql(query);
@@ -90,6 +96,7 @@ class HudiService(spark : SparkSession){
             .option("hoodie.datasource.hive_sync.partition_fields", "")
             .option("hoodie.datasource.hive_sync.partition_extractor_class", "org.apache.hudi.hive.NonPartitionedExtractor")
             .option("hoodie.table.name", tableName)
+            .option("hoodie.metadata.enable", "false")
             .toTable(s"$dbName.$tableName"); // không dùng start
             // .start(tablePath)
     }
@@ -125,5 +132,21 @@ class HudiService(spark : SparkSession){
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """ 
         spark.sql(query)
+    }
+
+    def createView(viewName: String, tableName:String): Unit = {
+        spark.sql(s"""
+            CREATE OR REPLACE VIEW $viewName AS
+            SELECT `^(?!_hoodie_).*` FROM $tableName
+        """);
+    }
+
+    def writeRaw(df : DataFrame): Unit = {
+        this.writeStream(df, 
+                            s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/raw_table/${this.getUuid()}", 
+                            datalakeConf.rawDb,
+                            datalakeConf.rawTable, 
+                            s"s3a://${configVars.BUCKET}/bronze/raw_table/");
+
     }
 }

@@ -51,7 +51,7 @@ docker exec -it master bash
   --conf "spark.network.timeout=800s" \
   --conf "spark.rpc.askTimeout=800s" \
   --conf "spark.driver.maxResultSize=2g" \
-  --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.hudi:hudi-spark3.5-bundle_2.12:1.0.0,org.neo4j:neo4j-connector-apache-spark_2.12:5.4.0_for_spark_3\
+  --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.hudi:hudi-spark3.5-bundle_2.12:1.0.0,org.mongodb.spark:mongo-spark-connector_2.12:10.6.0\
   /opt/spark/work-dir/jars/scala-2.12/pipeline_2.12-0.1.0.jar
 ```
 

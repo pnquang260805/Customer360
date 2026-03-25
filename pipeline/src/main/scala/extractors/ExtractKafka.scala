@@ -9,7 +9,8 @@ class ExtractKafka(spark : SparkSession, bootstrap : String){
             "kafka.bootstrap.servers" -> bootstrap,
             "subscribe" -> topic,
             "startingOffsets" -> startOffSet,
-            "startingOffsets" -> "latest"
+            "startingOffsets" -> "earliest",
+            "failOnDataLoss" -> "false"
         );
         var fullOptions = baseOptions ++ options;
         var eventDf = spark.readStream.format("kafka")

@@ -4,6 +4,8 @@ class ConfigVariables {
     val S3_ACCESS_KEY : String = "admin";
     val S3_SECRET_KEY : String = "password";
     val BUCKET : String = "tables";
+    val CHECKPOINT_BUCKET : String = "lake";
+    val CHECKPOINT_FOLDER : String = "checkpoints"
 
 
     val KAFKA_BOOTSTRAP : String = "kafka:29092";
@@ -14,6 +16,19 @@ class ConfigVariables {
     val PRODUCT_TOPIC : String = "e-commerce-product.public.product";
     val EVENT_TOPIC : String = "e-commerce-event.public.event";
 
-    val CHECKPOINT_BRONZE : String = s"s3a://$BUCKET/checkpoints/bronze_raw/";
-    val CHECKPOINT_SILVER : String = s"s3a://$BUCKET/checkpoints/silver_transaction/";
+    val CHECKPOINT_BRONZE : String = s"s3a://$CHECKPOINT_BUCKET/$CHECKPOINT_FOLDER/bronze_raw/";
+    val CHECKPOINT_SILVER : String = s"s3a://$CHECKPOINT_BUCKET/$CHECKPOINT_FOLDER/silver_transaction/";
+    val CHECKPOINT_MONGODB_CUSTOMER : String = s"s3a://$CHECKPOINT_BUCKET/$CHECKPOINT_FOLDER/mongodb/customer";
+    val CHECKPOINT_MONGODB_EVENT : String = s"s3a://$CHECKPOINT_BUCKET/$CHECKPOINT_FOLDER/mongodb/event";
+
+    val ATLAS_USERNAME : String = System.getenv("ATLAS_USERNAME");
+    val ATLAS_PASSWORD : String = System.getenv("ATLAS_PASSWORD");
+    val ATLAS_CLUSTER : String = System.getenv("ATLAS_CLUSTER");
+    val ATLAS_DATABASE : String = System.getenv("ATLAS_DATABASE");
+    val ATLAS_COLLECTION : String = System.getenv("ATLAS_COLLECTION");
+    val ATLAS_APP_NAME : String = System.getenv("ATLAS_APP_NAME");
+
+    def atlasConnectionString(): String = {
+        return s"mongodb+srv://${ATLAS_USERNAME}:${ATLAS_PASSWORD}@${ATLAS_CLUSTER}/?appName=${ATLAS_APP_NAME}";
+    }
 }

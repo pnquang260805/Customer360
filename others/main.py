@@ -118,6 +118,18 @@ def setup_postgres():
     curr.execute(create_transaction_table)
     conn.commit()
 
+    query = f"""
+        CREATE TABLE IF NOT EXISTS event(
+            event_id BIGSERIAL PRIMARY KEY,
+            type TEXT,
+            user_id varchar(50),
+            url TEXT,
+            time_stamp TIMESTAMPTZ DEFAULT NOW()
+        )
+    """
+    curr.execute(query)
+    conn.commit()
+
     conn.close()
 
 
