@@ -111,4 +111,30 @@ class SqlStreamService {
                 .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/dim_product") 
                 .start();
     }
+
+    def mergeTransactionSilver(transactionDf : DataFrame, transactionTable: String): Unit = {
+        var transactionTempView : String = "transactionStg";
+        
+        val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
+            if(!batchDf.isEmpty){
+                // Bảng Fact không cần SCD Type 2, chỉ cần Upsert thẳng bằng MERGE INTO của Hudi
+                val mergeQuery : String = s"""
+                    MERGE INTO $transactionTable AS target
+                    USING $transactionTempView AS source
+                    ON target.transaction_id = source.transaction_id
+                    WHEN MATCHED THEN UPDATE SET *
+                    WHEN NOT MATCHED THEN INSERT *
+                """;
+
+                batchDf.createOrReplaceTempView(transactionTempView);
+                batchDf.sparkSession.sql(mergeQuery);
+            }
+        };
+        
+        transactionDf.writeStream
+                .foreachBatch(batchProcess)
+                .outputMode("update")
+                .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoints/silver_transaction") 
+                .start();
+    }
 }
