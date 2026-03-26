@@ -14,6 +14,7 @@ import config.{ConfigVariables, DatalakeConfig}
 import transformers.TransformCustomerSilver
 import services.SqlStreamService
 import transformers.TransformProductSilver
+import transformers.TransformTransactionSilver //here
 import services.Neo4jService
 import services.ERService
 
@@ -39,7 +40,7 @@ object Main extends App {
     var transformProduct: TransformProductSilver = new TransformProductSilver();
     var neo4jService : Neo4jService = new Neo4jService(spark);
     var erService : ERService = new ERService(neo4jService, spark);
-    // var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver();
+    var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver(); //here
 
     // Initiate database
     hudiService.createDatabase(datalakeConf.rawDb, s"s3a://${configVars.BUCKET}/bronze/raw_db/");
@@ -56,7 +57,8 @@ object Main extends App {
     var unionDf = customerStreamDf.union(productStreamDf);
     var eventStreamDf = kafkaExtractor.extractStreamKafka(configVars.EVENT_TOPIC);
 
-    var unionDf = customerStreamDf.union(eventStreamDf);
+    // var unionDf = customerStreamDf.union(eventStreamDf);
+    var unionDf = customerStreamDf.union(productStreamDf).union(eventStreamDf).union(transactionStreamDf);
     // Load
     // Load data into raw
     hudiService.writeStream(unionDf, 
@@ -79,5 +81,11 @@ object Main extends App {
     var productDf : DataFrame = rawDf.filter(col("key") === "product");
     var stgDimProduct : DataFrame = transformProduct.stgSilver(productDf);
     sqlService.mergeProductDim(stgDimProduct, s"${datalakeConf.silverDb}.${datalakeConf.dimProduct}");
+
+    // Transaction
+    var rawTransactionDf = rawDf.filter(col("key") === "transaction");
+    var stgTransactionSilver : DataFrame = transformTransactionSilver.stgSilver(rawTransactionDf);
+    sqlService.mergeTransactionSilver(stgTransactionSilver, s"${datalakeConf.silverDb}.${datalakeConf.silverTransactionTable}");
+    
     spark.streams.awaitAnyTermination();
 }
