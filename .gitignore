@@ -19,3 +19,4 @@ test.json
 /*/.env
 /notebook
 /.env_cloud
+!/config/*.txt
