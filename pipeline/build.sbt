@@ -22,7 +22,11 @@ lazy val root = project
     libraryDependencies += "org.apache.hudi" %% "hudi-spark3.5-bundle" % "1.0.0",
     libraryDependencies += "org.mongodb.spark" %% "mongo-spark-connector" % "10.6.0",
 
-    libraryDependencies += "io.github.cdimascio" % "dotenv-java" % "2.3.2"
+    libraryDependencies += "io.github.cdimascio" % "dotenv-java" % "2.3.2",
+    libraryDependencies ++= Seq(
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+      "ch.qos.logback" % "logback-classic" % "1.3.5"
+    )
   )
 fork := true
 

@@ -9,7 +9,7 @@ class TransformEvent {
         val dataSchema : StructType = StructType(Seq(
             StructField("event_id", StringType, false),
             StructField("type", StringType, false),
-            StructField("user_id", StringType, false),
+            StructField("customer_id", StringType, false),
             StructField("url", StringType, false),
             StructField("time_stamp", TimestampType, false),
         ));
@@ -24,7 +24,7 @@ class TransformEvent {
         var explodedDf : DataFrame = eventDf.select(col("after_value.after.*"))
         
         var finalDf : DataFrame = explodedDf.withWatermark("time_stamp", "5 minutes") // stream aggregate cần watermark
-                                            .groupBy("user_id").agg(collect_list(
+                                            .groupBy("customer_id").agg(collect_list(
                                                 struct("event_id", "type", "url", "time_stamp")
                                             )).alias("events")
 

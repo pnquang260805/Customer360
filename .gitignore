@@ -20,3 +20,5 @@ test.json
 /notebook
 /.env_cloud
 !/config/*.txt
+/*/.bsp
+/*/.idea

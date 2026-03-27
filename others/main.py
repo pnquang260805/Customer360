@@ -122,7 +122,7 @@ def setup_postgres():
         CREATE TABLE IF NOT EXISTS event(
             event_id BIGSERIAL PRIMARY KEY,
             type TEXT,
-            user_id varchar(50),
+            customer_id varchar(50),
             url TEXT,
             time_stamp TIMESTAMPTZ DEFAULT NOW()
         )

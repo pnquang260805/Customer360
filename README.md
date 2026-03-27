@@ -42,8 +42,6 @@ docker exec -it master bash
 
 /opt/spark/bin/spark-submit \
   --master spark://master:7077 \
-  --executor-cores 1 \
-  --total-executor-cores 1 \
   --deploy-mode client \
   --class Main \
   --conf "spark.jars.ivy=/tmp/.ivy2" \
@@ -51,11 +49,11 @@ docker exec -it master bash
   --conf "spark.network.timeout=800s" \
   --conf "spark.rpc.askTimeout=800s" \
   --conf "spark.driver.maxResultSize=2g" \
-  --jars /opt/spark/work-dir/jars/hadoop-aws-3.3.4.jar,\
-        /opt/spark/work-dir/jars/aws-java-sdk-bundle-1.12.262.jar,\
-        /opt/spark/work-dir/jars/spark-sql-kafka-0-10_2.12-3.5.0.jar,\
-        /opt/spark/work-dir/jars/hudi-spark3.5-bundle_2.12-1.0.0.jar,\
-        /opt/spark/work-dir/jars/mongo-spark-connector_2.12-10.6.0.jar \
+  --driver-class-path "/opt/spark/work-dir/jars/logback-classic-1.2.11.jar:/opt/spark/work-dir/jars/logback-core-1.2.11.jar" \
+  --conf "spark.driver.extraJavaOptions=-Dlogback.configurationFile=logback.xml" \
+  --conf "spark.driver.extraJavaOptions=-Dlogback.configurationFile=logback.xml -Dlogback.debug=true" \
+  --packages "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:10.6.0,com.typesafe.scala-logging:scala-logging_2.12:3.9.5,ch.qos.logback:logback-classic:1.2.11" \
+  --jars /opt/spark/work-dir/jar_files/hadoop-aws-3.3.4.jar,/opt/spark/work-dir/jar_files/aws-java-sdk-bundle-1.12.262.jar,/opt/spark/work-dir/jar_files/hudi-spark3.5-bundle_2.12-1.0.0.jar \
   /opt/spark/work-dir/jars/scala-2.12/pipeline_2.12-0.1.0.jar
 ```
 

@@ -15,14 +15,14 @@ RUN apt update -y && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 2
 
-ENV JARS_DIR=/opt/spark/work-dir/jars
+ENV JARS_DIR=/opt/spark/work-dir/jar_files
 RUN mkdir ${JARS_DIR}
 
 RUN chown -P spark:spark ${JARS_DIR}
-USER spark
-
 
 COPY ./config/spark_jar_urls.txt .
 RUN ./download_jars.sh spark_jar_urls.txt
+
+USER spark
 
 CMD [ "./spark-entrypoint.sh" ]

@@ -1,11 +1,15 @@
 package services
 
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.sql.DataFrame
+
 import java.time.LocalDate
 import config.ConfigVariables
+import utils.MUtils
+
 import java.util.UUID
 
-class SqlStreamService {
+class SqlStreamService extends LazyLogging with MUtils{
     val configVars = new ConfigVariables();
 
     private def createUpdateColumns(cols : Seq[String]): String = {
@@ -21,69 +25,81 @@ class SqlStreamService {
         return UUID.randomUUID().toString();
     }
 
-    def mergeCustomerSilver(customerDf : DataFrame, customerTable: String): Unit = {
-        var customerTempView : String = "customerStg";
-        // var columns: Seq[String] = Seq("first_name", "last_name", "gender", "date_of_birth", "email", "phone_number", "country", "creation_date");
-        // val columnListString = columns.mkString(", ");
-        val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
+    def mergeCustomerDim(customerDf : DataFrame, customerTable: String): Unit = {
+        var customerTempView : String = s"customerStg";
+        benchmark("Merge dim customer"){
+          val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
             if(!batchDf.isEmpty){
-                val customerIds = batchDf.select("customer_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
-                val mergeQuery : String = s"""
+              // val customerIds = batchDf.select("customer_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
+              val mergeQuery : String = s"""
                     -- Step 1: Merge and set
-                    UPDATE $customerTable 
-                    SET is_current = false, expired_date = current_date()
-                    WHERE customer_id IN ($customerIds) AND is_current = true
+                    UPDATE $customerTable t
+                    SET t.is_current = false, t.expired_date = current_date()
+                    WHERE t.is_current = true
+                    AND EXISTS (
+                        SELECT 1 FROM $customerTempView s
+                        WHERE trim(s.customer_id) = trim(t.customer_id)
+                    )
                     """;
-
-                val insertQuery: String = s"""
-                    INSERT INTO $customerTable
-                    SELECT 
+              val columns =
+                """customer_sk, customer_id, first_name, last_name, gender,
+                  date_of_birth, email, phone_number, country, creation_date, effective_date, expired_date, is_current""".stripMargin;
+              val insertQuery: String = s"""
+                    INSERT INTO $customerTable (${columns})
+                    SELECT
                         customer_sk,
                         customer_id,
                         first_name,
                         last_name,
-                        gender, 
+                        gender,
                         date_of_birth,
                         email,
                         phone_number,
                         country,
                         creation_date,
-                        current_date() AS effective_date, 
-                        CAST('9999-12-31' AS DATE) AS expired_date, 
+                        current_date() AS effective_date,
+                        CAST('9999-12-31' AS DATE) AS expired_date,
                         true AS is_current
                     FROM $customerTempView
                 """;
 
-                batchDf.createOrReplaceTempView(customerTempView);
-                batchDf.sparkSession.sql(mergeQuery);
-                batchDf.sparkSession.sql(insertQuery);
+              batchDf.createOrReplaceTempView(customerTempView);
+              batchDf.sparkSession.sql(mergeQuery);
+              batchDf.sparkSession.sql(insertQuery);
             }
-        };
-        customerDf.writeStream
-                .foreachBatch(batchProcess)
-                .outputMode("update")
-                .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/customer_silver")
-                .start();
+          };
+          customerDf.writeStream
+            .foreachBatch(batchProcess)
+            .outputMode("update")
+            .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/customer_silver")
+            .start();
+          logger.info(s"Customers: ${customerDf.count()}")
+        }
     }
     
     def mergeProductDim(productDf : DataFrame, productTable: String): Unit = {
         var productTempView : String = "productStg";
         
-        val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
+        benchmark("merge dim_product"){
+          val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
             if(!batchDf.isEmpty){
-                
-                val productIds = batchDf.select("product_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
-                
-                val mergeQuery : String = s"""
+
+              val productIds = batchDf.select("product_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
+
+              val mergeQuery : String = s"""
                     -- Step 1: Merge and set
-                    UPDATE $productTable 
-                    SET is_current = false, expired_date = current_date()
-                    WHERE product_id IN ($productIds) AND is_current = true
+                    UPDATE $productTable t
+                    SET t.is_current = false, t.expired_date = current_date()
+                    WHERE t.is_current = true
+                    AND EXISTS (
+                        SELECT 1 FROM $productTempView s
+                        WHERE trim(s.product_id) = trim(t.product_id)
+                    )
                     """;
 
-                val insertQuery: String = s"""
+              val insertQuery: String = s"""
                     INSERT INTO $productTable
-                    SELECT 
+                    SELECT
                         product_sk,
                         product_id,
                         product_name,
@@ -93,22 +109,24 @@ class SqlStreamService {
                         currency,
                         sale_percents,
                         product_type,
-                        current_date() AS effective_date, 
-                        CAST('9999-12-31' AS DATE) AS expired_date, 
+                        current_date() AS effective_date,
+                        CAST('9999-12-31' AS DATE) AS expired_date,
                         true AS is_current
                     FROM $productTempView
                 """;
 
-                batchDf.createOrReplaceTempView(productTempView);
-                batchDf.sparkSession.sql(mergeQuery);
-                batchDf.sparkSession.sql(insertQuery);
+              batchDf.createOrReplaceTempView(productTempView);
+              batchDf.sparkSession.sql(mergeQuery);
+              batchDf.sparkSession.sql(insertQuery);
             }
-        };
-        
-        productDf.writeStream
-                .foreachBatch(batchProcess)
-                .outputMode("update")
-                .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/dim_product") 
-                .start();
+          };
+
+          productDf.writeStream
+            .foreachBatch(batchProcess)
+            .outputMode("update")
+            .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/dim_product")
+            .start();
+          logger.info(s"Products: ${productDf.count()}");
+        }
     }
 }
