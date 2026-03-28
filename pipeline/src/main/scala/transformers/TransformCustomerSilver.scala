@@ -25,13 +25,17 @@ class TransformCustomerSilver extends Transform {
     val cdcSchema = StructType(Seq(
       // StructField("before", dataSchema, true),
       StructField("after", dataSchema, true),
-      // StructField("op", StringType, true),     // 'c' cho create, 'u' cho update, 'd' cho delete
-      // StructField("ts_ms", LongType, true)
+       StructField("op", StringType, true),     // 'c' cho create, 'u' cho update, 'd' cho delete
+//       StructField("ts_ms", LongType, true)
     ));
 
     var rawCustomer: DataFrame = rawDf.where(col("key") === "customer").select("value");
-    var customerDf: DataFrame = rawCustomer.select(from_json(col("value").cast(StringType), cdcSchema).alias("after_value"))
-    var explodedDf: DataFrame = customerDf.select(col("after_value.after.*"))
+    var customerDf: DataFrame = rawCustomer.select(from_json(col("value").cast(StringType), cdcSchema).alias("after_value"));
+    var explodedDf: DataFrame = customerDf.select(col("after_value.after.*"), col("after_value.op").alias("op"));
+    explodedDf = explodedDf.where(col("op") =!= "d");
+
+    explodedDf = explodedDf.withColumn("phone_number", regexp_replace(col("phone_number"), "[\\(\\)\\s\\-]", ""))
+      .withColumn("phone_number", regexp_replace(col("phone_number"), "^\\+84", "0"))
 
     var droppedCustomer: DataFrame = explodedDf;
     var finalDf: DataFrame = droppedCustomer

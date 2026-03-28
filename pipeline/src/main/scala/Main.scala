@@ -16,9 +16,8 @@ import services.SqlStreamService
 import transformers.TransformProductSilver
 import services.MongoDbService
 import transformers.TransformEvent
-import utils.MUtils
 
-object Main extends App with LazyLogging with MUtils {
+object Main extends App with LazyLogging {
   // Base variables
   val configVars = new ConfigVariables()
   val datalakeConf = new DatalakeConfig()
@@ -52,6 +51,8 @@ object Main extends App with LazyLogging with MUtils {
   hudiService.createSilverCustomer(datalakeConf.silverDb, datalakeConf.silverCustomerTable, s"s3a://${configVars.BUCKET}/silver/silver_customer");
   hudiService.createDimProduct(datalakeConf.silverDb, datalakeConf.dimProduct, s"s3a://${configVars.BUCKET}/silver/dim_product");
 
+  logger.info(s"Start at: ${System.nanoTime()}");
+
   // Extract
   var customerStreamDf = kafkaExtractor.extractStreamKafka(topic = configVars.RAW_CUSTOMER_TOPIC);
   var productStreamDf = kafkaExtractor.extractStreamKafka(configVars.PRODUCT_TOPIC);
@@ -62,39 +63,38 @@ object Main extends App with LazyLogging with MUtils {
     .union(productStreamDf)
     .union(eventStreamDf)
 
-  benchmark("Pipeline") {
-    hudiService.writeRaw(combinedRawDf, "all_topics_raw")
+  hudiService.writeRaw(combinedRawDf, "all_topics_raw")
 
-    // Transform
-    //    var rawDf = hudiService.readStreamTable(s"s3a://${configVars.BUCKET}/bronze/raw_table/"); // khả năng nghẽn chỗ này
-    var rawDf = combinedRawDf;
-    // rawDf.writeStream.format("console").start(); // for debug
+  // Transform
+  //    var rawDf = hudiService.readStreamTable(s"s3a://${configVars.BUCKET}/bronze/raw_table/"); // khả năng nghẽn chỗ này
+  var rawDf = combinedRawDf;
+  // rawDf.writeStream.format("console").start(); // for debug
 
-    var stgCustomerSilver: DataFrame = transformCustomerSilver.stgSilver(rawDf);
-    sqlService.mergeCustomerDim(stgCustomerSilver, s"${datalakeConf.silverDb}.${datalakeConf.silverCustomerTable}")
-    mongodbService.writeMongoDb(stgCustomerSilver,
-      configVars.ATLAS_DATABASE,
-      configVars.ATLAS_COLLECTION,
-      configVars.atlasConnectionString(),
-      "customer_id",
-      configVars.CHECKPOINT_MONGODB_CUSTOMER);
-    // stgCustomerSilver.writeStream.format("console").start();
+  var stgCustomerSilver: DataFrame = transformCustomerSilver.stgSilver(rawDf);
+  sqlService.mergeCustomerDim(stgCustomerSilver, s"${datalakeConf.silverDb}.${datalakeConf.silverCustomerTable}")
+  mongodbService.writeMongoDb(stgCustomerSilver,
+    configVars.ATLAS_DATABASE,
+    configVars.ATLAS_COLLECTION,
+    configVars.atlasConnectionString(),
+    "customer_id",
+    configVars.CHECKPOINT_MONGODB_CUSTOMER);
+  // stgCustomerSilver.writeStream.format("console").start();
 
-    // Product
-    var productDf: DataFrame = rawDf.filter(col("key") === "product");
-    var stgDimProduct: DataFrame = transformProduct.stgSilver(productDf);
-    sqlService.mergeProductDim(stgDimProduct, s"${datalakeConf.silverDb}.${datalakeConf.dimProduct}");
+  // Product
+  var productDf: DataFrame = rawDf.filter(col("key") === "product");
+  var stgDimProduct: DataFrame = transformProduct.stgSilver(productDf);
+  sqlService.mergeProductDim(stgDimProduct, s"${datalakeConf.silverDb}.${datalakeConf.dimProduct}");
 
-    // Event
-    var stgEvent: DataFrame = transformEvent.transformStgEvent(rawDf);
-    mongodbService.writeMongoDb(stgEvent,
-      configVars.ATLAS_DATABASE,
-      configVars.ATLAS_COLLECTION,
-      configVars.atlasConnectionString(),
-      "customer_id",
-      configVars.CHECKPOINT_MONGODB_EVENT);
-    logger.info("Inserted to mongodb")
-  }
+  // Event
+  var stgEvent: DataFrame = transformEvent.transformStgEvent(rawDf);
+  mongodbService.writeMongoDb(stgEvent,
+    configVars.ATLAS_DATABASE,
+    configVars.ATLAS_COLLECTION,
+    configVars.atlasConnectionString(),
+    "customer_id",
+    configVars.CHECKPOINT_MONGODB_EVENT);
+  println("Inserted to mongodb")
+  logger.info(s"End at: ${System.nanoTime()}");
 
   spark.streams.awaitAnyTermination();
 }

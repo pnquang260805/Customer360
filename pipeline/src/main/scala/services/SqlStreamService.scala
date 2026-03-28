@@ -5,33 +5,31 @@ import org.apache.spark.sql.DataFrame
 
 import java.time.LocalDate
 import config.ConfigVariables
-import utils.MUtils
-
 import java.util.UUID
 
-class SqlStreamService extends LazyLogging with MUtils{
-    val configVars = new ConfigVariables();
+class SqlStreamService {
+  val configVars = new ConfigVariables();
 
-    private def createUpdateColumns(cols : Seq[String]): String = {
-        cols.map(c => s"$c = source.$c").mkString(",");
-    }
+  private def createUpdateColumns(cols: Seq[String]): String = {
+    cols.map(c => s"$c = source.$c").mkString(",");
+  }
 
-    private def getNow(): String = {
-        var now:LocalDate = LocalDate.now();
-        return now.toString();
-    }
+  private def getNow(): String = {
+    var now: LocalDate = LocalDate.now();
+    return now.toString();
+  }
 
-    private def genSk(): String = {
-        return UUID.randomUUID().toString();
-    }
+  private def genSk(): String = {
+    return UUID.randomUUID().toString();
+  }
 
-    def mergeCustomerDim(customerDf : DataFrame, customerTable: String): Unit = {
-        var customerTempView : String = s"customerStg";
-        benchmark("Merge dim customer"){
-          val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
-            if(!batchDf.isEmpty){
-              // val customerIds = batchDf.select("customer_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
-              val mergeQuery : String = s"""
+  def mergeCustomerDim(customerDf: DataFrame, customerTable: String): Unit = {
+    var customerTempView: String = s"customerStg";
+    val batchProcess: (DataFrame, Long) => Unit = (batchDf: DataFrame, batchId: Long) => {
+      if (!batchDf.isEmpty) {
+        // val customerIds = batchDf.select("customer_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
+        val mergeQuery: String =
+          s"""
                     -- Step 1: Merge and set
                     UPDATE $customerTable t
                     SET t.is_current = false, t.expired_date = current_date()
@@ -41,10 +39,11 @@ class SqlStreamService extends LazyLogging with MUtils{
                         WHERE trim(s.customer_id) = trim(t.customer_id)
                     )
                     """;
-              val columns =
-                """customer_sk, customer_id, first_name, last_name, gender,
+        val columns =
+          """customer_sk, customer_id, first_name, last_name, gender,
                   date_of_birth, email, phone_number, country, creation_date, effective_date, expired_date, is_current""".stripMargin;
-              val insertQuery: String = s"""
+        val insertQuery: String =
+          s"""
                     INSERT INTO $customerTable (${columns})
                     SELECT
                         customer_sk,
@@ -63,30 +62,27 @@ class SqlStreamService extends LazyLogging with MUtils{
                     FROM $customerTempView
                 """;
 
-              batchDf.createOrReplaceTempView(customerTempView);
-              batchDf.sparkSession.sql(mergeQuery);
-              batchDf.sparkSession.sql(insertQuery);
-            }
-          };
-          customerDf.writeStream
-            .foreachBatch(batchProcess)
-            .outputMode("update")
-            .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/customer_silver")
-            .start();
-          logger.info(s"Customers: ${customerDf.count()}")
-        }
-    }
-    
-    def mergeProductDim(productDf : DataFrame, productTable: String): Unit = {
-        var productTempView : String = "productStg";
-        
-        benchmark("merge dim_product"){
-          val batchProcess : (DataFrame, Long) => Unit = (batchDf : DataFrame, batchId : Long) => {
-            if(!batchDf.isEmpty){
+        batchDf.createOrReplaceTempView(customerTempView);
+        batchDf.sparkSession.sql(mergeQuery);
+        batchDf.sparkSession.sql(insertQuery);
+      }
+    };
+    customerDf.writeStream
+      .foreachBatch(batchProcess)
+      .outputMode("update")
+      .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/customer_silver")
+      .start();
+  }
 
-              val productIds = batchDf.select("product_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
+  def mergeProductDim(productDf: DataFrame, productTable: String): Unit = {
+    var productTempView: String = "productStg";
+    val batchProcess: (DataFrame, Long) => Unit = (batchDf: DataFrame, batchId: Long) => {
+      if (!batchDf.isEmpty) {
 
-              val mergeQuery : String = s"""
+        val productIds = batchDf.select("product_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
+
+        val mergeQuery: String =
+          s"""
                     -- Step 1: Merge and set
                     UPDATE $productTable t
                     SET t.is_current = false, t.expired_date = current_date()
@@ -97,7 +93,8 @@ class SqlStreamService extends LazyLogging with MUtils{
                     )
                     """;
 
-              val insertQuery: String = s"""
+        val insertQuery: String =
+          s"""
                     INSERT INTO $productTable
                     SELECT
                         product_sk,
@@ -115,18 +112,17 @@ class SqlStreamService extends LazyLogging with MUtils{
                     FROM $productTempView
                 """;
 
-              batchDf.createOrReplaceTempView(productTempView);
-              batchDf.sparkSession.sql(mergeQuery);
-              batchDf.sparkSession.sql(insertQuery);
-            }
-          };
+        batchDf.createOrReplaceTempView(productTempView);
+        batchDf.sparkSession.sql(mergeQuery);
+        batchDf.sparkSession.sql(insertQuery);
+      }
+    };
 
-          productDf.writeStream
-            .foreachBatch(batchProcess)
-            .outputMode("update")
-            .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/dim_product")
-            .start();
-          logger.info(s"Products: ${productDf.count()}");
-        }
-    }
+    productDf.writeStream
+      .foreachBatch(batchProcess)
+      .outputMode("update")
+      .option("checkpointLocation", s"s3a://${configVars.BUCKET}/checkpoint/dim_product")
+      .start();
+
+  }
 }

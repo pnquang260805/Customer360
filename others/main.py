@@ -110,9 +110,7 @@ def setup_postgres():
             price DECIMAL(10, 2),
             quantity INTEGER,
             total_amount DECIMAL(10, 2),
-            event_time DATE,
-            FOREIGN KEY(customer_id) REFERENCES customer(customer_id),
-            FOREIGN KEY(product_id) REFERENCES product(product_id)
+            event_time DATE
         )
     """
     curr.execute(create_transaction_table)

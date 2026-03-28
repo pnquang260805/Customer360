@@ -5,9 +5,8 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.streaming.Trigger
 import config.{ConfigVariables, DatalakeConfig}
-import utils.MUtils
 
-class HudiService(spark: SparkSession) extends LazyLogging with MUtils{
+class HudiService(spark: SparkSession){
   val configVars = new ConfigVariables();
   val datalakeConf = new DatalakeConfig();
 
@@ -88,7 +87,6 @@ class HudiService(spark: SparkSession) extends LazyLogging with MUtils{
   }
 
   def writeStream(df: DataFrame, checkpoint: String, dbName: String, tableName: String, tablePath: String): Unit = {
-    benchmark("Write hudi"){
       df.writeStream.format("hudi")
         .outputMode("append")
         .option("checkpointLocation", checkpoint)
@@ -107,7 +105,7 @@ class HudiService(spark: SparkSession) extends LazyLogging with MUtils{
         .option("hoodie.datasource.hive_sync.enable", "false")
         .option("hoodie.cleaner.commits.retained", "3")
         .toTable(s"$dbName.$tableName");
-    }
+
   }
 
   def readStreamTable(tablePath: String): DataFrame = {
