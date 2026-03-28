@@ -100,7 +100,7 @@ class HudiService(spark: SparkSession){
         .option("hoodie.datasource.hive_sync.partition_fields", "")
         .option("hoodie.datasource.hive_sync.partition_extractor_class", "org.apache.hudi.hive.NonPartitionedExtractor")
         .option("hoodie.table.name", tableName)
-        .option("hoodie.metadata.enable", "true") // Bật metadata table (Hudi 0.7.0+)
+        .option("hoodie.metadata.enable", "false") // Bật metadata table (Hudi 0.7.0+)
         .option("hoodie.datasource.write.payload.class", "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload")
         .option("hoodie.datasource.hive_sync.enable", "false")
         .option("hoodie.cleaner.commits.retained", "3")

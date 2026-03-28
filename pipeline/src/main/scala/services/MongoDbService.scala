@@ -5,6 +5,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SaveMode
 import config.ConfigVariables
+import org.apache.spark.sql.types.StructType
 
 class MongoDbService(spark: SparkSession) {
   private val configVars = new ConfigVariables;
@@ -20,8 +21,7 @@ class MongoDbService(spark: SparkSession) {
             .option("spark.mongodb.collection", collection)
             .option("idFieldList", idColumn)
             .option("operationType", "update")
-            .option("hoodie.cleaner.commits.retained", "3")
-            .option("hoodie.metadata.enable", "false")
+            .option("partitioner", "com.mongodb.spark.sql.connector.read.partitioner.SinglePartitionPartitioner")
             .mode(SaveMode.Append)
             .save();
         }
@@ -31,5 +31,15 @@ class MongoDbService(spark: SparkSession) {
       .option("hoodie.metadata.enable", "false")
       .outputMode("update")
       .start();
+    print("=====Inserted to mongodb=====")
+  }
+
+  def readMongo(schema: StructType, database: String, collection: String, connectionString: String): DataFrame = {
+    return spark.read.format("mongodb")
+      .option("spark.mongodb.connection.uri", connectionString)
+      .option("spark.mongodb.database", database)
+      .option("spark.mongodb.collection", collection)
+      .schema(schema)
+      .load()
   }
 }

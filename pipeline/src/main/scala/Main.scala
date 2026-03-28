@@ -11,11 +11,9 @@ import extractors.ExtractKafka
 import config.SparkConfig
 import extractors.ExtractKafka
 import config.{ConfigVariables, DatalakeConfig}
-import transformers.TransformCustomerSilver
+import transformers.{TransformCustomerSilver, TransformEvent, TransformProductSilver, TransformTransactionSilver}
 import services.SqlStreamService
-import transformers.TransformProductSilver
 import services.MongoDbService
-import transformers.TransformEvent
 
 object Main extends App with LazyLogging {
   // Base variables
@@ -40,7 +38,7 @@ object Main extends App with LazyLogging {
   var transformProduct: TransformProductSilver = new TransformProductSilver();
   var mongodbService: MongoDbService = new MongoDbService(spark);
   var transformEvent: TransformEvent = new TransformEvent();
-  // var transformTransactionSilver : TransformTransactionSilver = new TransformTransactionSilver();
+  var transformTransactionSilver: TransformTransactionSilver = new TransformTransactionSilver(hudiService, mongodbService);
 
   // Initiate database
   hudiService.createDatabase(datalakeConf.rawDb, s"s3a://${configVars.BUCKET}/bronze/raw_db/");
@@ -57,11 +55,13 @@ object Main extends App with LazyLogging {
   var customerStreamDf = kafkaExtractor.extractStreamKafka(topic = configVars.RAW_CUSTOMER_TOPIC);
   var productStreamDf = kafkaExtractor.extractStreamKafka(configVars.PRODUCT_TOPIC);
   var eventStreamDf = kafkaExtractor.extractStreamKafka(configVars.EVENT_TOPIC);
+  var transactionDf = kafkaExtractor.extractStreamKafka(configVars.TRANSACTION_TOPIC);
   // Load
   // Load data into raw
   val combinedRawDf = customerStreamDf
     .union(productStreamDf)
     .union(eventStreamDf)
+    .union(transactionDf)
 
   hudiService.writeRaw(combinedRawDf, "all_topics_raw")
 
@@ -92,9 +92,19 @@ object Main extends App with LazyLogging {
     configVars.ATLAS_COLLECTION,
     configVars.atlasConnectionString(),
     "customer_id",
-    configVars.CHECKPOINT_MONGODB_EVENT);
-  println("Inserted to mongodb")
+    s"${configVars.CHECKPOINT_MONGODB_EVENT}/01");
   logger.info(s"End at: ${System.nanoTime()}");
+
+  // Transaction
+  var stgTransaction = transformTransactionSilver.stgSilver(rawDf); // để cho vào fact
+  sqlService.insertTransaction(stgTransaction, s"${datalakeConf.silverDb}.${datalakeConf.silverTransactionTable}")
+  var resolvedTransaction = transformTransactionSilver.resolve(stgTransaction);
+  mongodbService.writeMongoDb(resolvedTransaction,
+    configVars.ATLAS_DATABASE,
+    configVars.ATLAS_COLLECTION,
+    configVars.atlasConnectionString(),
+    "customer_id",
+    s"${configVars.CHECKPOINT_MONGODB_EVENT}/02");
 
   spark.streams.awaitAnyTermination();
 }

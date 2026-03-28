@@ -1,8 +1,10 @@
 package utils
 
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
+
 import java.util.Base64
-import java.math.{BigInteger, BigDecimal}
+import java.math.{BigDecimal, BigInteger}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions._
 
@@ -18,4 +20,11 @@ object TransformUtils {
       new BigDecimal(unscaled, SCALE)
     }
   })
+
+  def normalizePhoneNumber(df: DataFrame, phoneCol: String = "phone_number"): DataFrame = {
+    var df2 = df.withColumn(phoneCol, regexp_replace(col(phoneCol), "[\\s\\(\\)\\-]", ""))
+      .withColumn(phoneCol, regexp_replace(col(phoneCol), "^[+84]", "0"));
+
+    return df2;
+  }
 }
