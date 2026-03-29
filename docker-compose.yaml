@@ -101,82 +101,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 1g
+          cpus: '3.5'
+          memory: 3g
     ports:
       - "8081:8081"
-    env_file:
-      - .env_cloud
-
-  worker2:
-    container_name: worker2
-    image: worker
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/spark.dockerfile
-    networks:
-      - project-net
-    environment:
-      - MODE=worker
-      - MASTER_URL=spark://master:7077
-    depends_on:
-      master:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1g
-    ports:
-      - "8082:8082"
-    env_file:
-      - .env_cloud
-
-  worker3:
-    container_name: worker3
-    image: worker
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/spark.dockerfile
-    networks:
-      - project-net
-    environment:
-      - MODE=worker
-      - MASTER_URL=spark://master:7077
-    depends_on:
-      master:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1g
-    ports:
-      - "28083:28083"
-    env_file:
-      - .env_cloud
-
-  worker4:
-    container_name: worker4
-    image: worker
-    build: 
-      context: .
-      dockerfile: ./dockerfiles/spark.dockerfile
-    networks:
-      - project-net
-    environment:
-      - MODE=worker
-      - MASTER_URL=spark://master:7077
-    depends_on:
-      master:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1g
-    ports:
-      - "28084:28084"
     env_file:
       - .env_cloud
 
