@@ -156,6 +156,29 @@ def insert_transaction(n):
     execute_values(cur, insert, [tuple(d.values()) for d in data])
     conn.commit()
 
+def insert_event(n):
+    q = f"""
+        SELECT customer_id, phone_number from customer
+    """
+    cur.execute(q)
+    customers_id = [x[0]for x in cur.fetchall()]
+    def gen_data():
+        price = round(random.random() * random.randint(100, 500), 2)
+        sale = round(random.random(), 4)
+        return {
+            "type": random.choice(['view', 'add to cart']),
+            "customer_id": random.choice(customers_id),
+            "url": None,
+        }
+    query = f"""INSERT INTO event
+                    (type, customer_id, 
+                    url)
+                VALUES %s    
+                """
+    data = [gen_data() for _ in range(n)]
+    execute_values(cur, query, [tuple(d.values()) for d in data])
+    conn.commit()
+
 
 customer = int(input("Number of customer: "))
 insert_customer(customer)
@@ -163,3 +186,5 @@ product = int(input("Number of product: "))
 insert_product(product)
 transaction = int(input("Number of transaction: "))
 insert_transaction(transaction)
+event = int(input("Number of event: "))
+insert_event(event)
