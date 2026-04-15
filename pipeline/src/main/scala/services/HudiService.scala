@@ -1,23 +1,27 @@
 package services
 
-import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.streaming.Trigger
 import config.{ConfigVariables, DatalakeConfig}
 
-class HudiService(spark: SparkSession){
+class HudiService(spark: SparkSession) {
   val configVars = new ConfigVariables();
   val datalakeConf = new DatalakeConfig();
 
   private def getUuid(): String = java.util.UUID.randomUUID.toString;
 
   def createDatabase(dbName: String, location: String): Unit = {
-    var query: String = s"CREATE DATABASE IF NOT EXISTS $dbName LOCATION '$location'";
+    var query: String =
+      s"CREATE DATABASE IF NOT EXISTS $dbName LOCATION '$location'";
     spark.sql(query);
   }
 
-  def createRawTable(dbName: String, tableName: String, location: String): Unit = {
+  def createRawTable(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
     var query: String =
       s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
@@ -32,7 +36,11 @@ class HudiService(spark: SparkSession){
     spark.sql(query)
   }
 
-  def createSilverTransaction(dbName: String, tableName: String, location: String): Unit = {
+  def createSilverTransaction(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
     var query: String =
       s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
@@ -57,7 +65,11 @@ class HudiService(spark: SparkSession){
     spark.sql(query)
   }
 
-  def createSilverCustomer(dbName: String, tableName: String, location: String): Unit = {
+  def createSilverCustomer(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
     var query: String =
       s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
@@ -86,35 +98,59 @@ class HudiService(spark: SparkSession){
     spark.sql(query)
   }
 
-  def writeStream(df: DataFrame, checkpoint: String, dbName: String, tableName: String, tablePath: String): Unit = {
-      df.writeStream.format("hudi")
-        .outputMode("append")
-        .option("checkpointLocation", checkpoint)
-        .trigger(Trigger.ProcessingTime("30 seconds"))
-        .option("hoodie.datasource.write.table.type", "MERGE_ON_READ")
-        .option("hoodie.datasource.hive_sync.enable", "true")
-        .option("hoodie.datasource.hive_sync.database", dbName)
-        .option("hoodie.datasource.hive_sync.table", tableName)
-        .option("hoodie.datasource.hive_sync.mode", "hms")
-        .option("hoodie.datasource.hive_sync.metastore.uris", "thrift://metastore:9083")
-        .option("hoodie.datasource.hive_sync.partition_fields", "")
-        .option("hoodie.datasource.hive_sync.partition_extractor_class", "org.apache.hudi.hive.NonPartitionedExtractor")
-        .option("hoodie.table.name", tableName)
-        .option("hoodie.metadata.enable", "false") // Bật metadata table (Hudi 0.7.0+)
-        .option("hoodie.datasource.write.payload.class", "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload")
-        .option("hoodie.datasource.hive_sync.enable", "false")
-        .option("hoodie.cleaner.commits.retained", "3")
-        .toTable(s"$dbName.$tableName");
+  def writeStream(
+      df: DataFrame,
+      checkpoint: String,
+      dbName: String,
+      tableName: String,
+      tablePath: String
+  ): Unit = {
+    df.writeStream
+      .format("hudi")
+      .outputMode("append")
+      .option("checkpointLocation", checkpoint)
+      .trigger(Trigger.ProcessingTime("30 seconds"))
+      .option("hoodie.datasource.write.table.type", "MERGE_ON_READ")
+      .option("hoodie.datasource.hive_sync.enable", "true")
+      .option("hoodie.datasource.hive_sync.database", dbName)
+      .option("hoodie.datasource.hive_sync.table", tableName)
+      .option("hoodie.datasource.hive_sync.mode", "hms")
+      .option(
+        "hoodie.datasource.hive_sync.metastore.uris",
+        "thrift://metastore:9083"
+      )
+      .option("hoodie.datasource.hive_sync.partition_fields", "")
+      .option(
+        "hoodie.datasource.hive_sync.partition_extractor_class",
+        "org.apache.hudi.hive.NonPartitionedExtractor"
+      )
+      .option("hoodie.table.name", tableName)
+      .option(
+        "hoodie.metadata.enable",
+        "false"
+      ) // Bật metadata table (Hudi 0.7.0+)
+      .option(
+        "hoodie.datasource.write.payload.class",
+        "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload"
+      )
+      .option("hoodie.datasource.hive_sync.enable", "false")
+      .option("hoodie.cleaner.commits.retained", "3")
+      .toTable(s"$dbName.$tableName");
 
   }
 
   def readStreamTable(tablePath: String): DataFrame = {
-    var streamDf = spark.readStream.format("hudi")
+    var streamDf = spark.readStream
+      .format("hudi")
       .load(tablePath);
     return streamDf;
   }
 
-  def createDimProduct(dbName: String, tableName: String, location: String): Unit = {
+  def createDimProduct(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
     var query: String =
       s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
@@ -143,19 +179,46 @@ class HudiService(spark: SparkSession){
   }
 
   def createView(viewName: String, tableName: String): Unit = {
-    spark.sql(
-      s"""
+    spark.sql(s"""
             CREATE OR REPLACE VIEW $viewName AS
             SELECT `^(?!_hoodie_).*` FROM $tableName
         """);
   }
 
   def writeRaw(df: DataFrame, id: String): Unit = {
-    this.writeStream(df,
+    this.writeStream(
+      df,
       s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/raw_table/${id}",
       datalakeConf.rawDb,
       datalakeConf.rawTable,
-      s"s3a://${configVars.BUCKET}/bronze/raw_table/");
+      s"s3a://${configVars.BUCKET}/bronze/raw_table/"
+    );
+  }
 
+  def createFactTransaction(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
+    var query: String =
+      s"""
+    CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+        transaction_sk STRING,
+        customer_sk STRING,
+        product_sk STRING,
+        price DECIMAL(10,2),
+        quantity DECIMAL(10,2),
+        total_amount DECIMAL(10, 2),
+        timestamp DATE
+    )
+    USING hudi
+    TBLPROPERTIES (
+        type = 'mor', -- Merge on read
+        primaryKey = 'transaction_sk',
+        precombineField = 'timestamp'
+    )
+    LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+    """
+    spark.sql(query)
   }
 }

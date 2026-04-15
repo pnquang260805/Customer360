@@ -121,7 +121,7 @@ def insert_transaction(n):
         elif i == 2: # Khách mua tại cửa hàng (Chưa có trong DB)
             return {
                 "transaction_id": tx_id,
-                "customer_id": None,
+                "customer_id": str(uuid4()),
                 "phone_number": fake.phone_number(),
                 "product_id": p_id,      # Lấy từ p
                 "product_name": p_name,  # Lấy từ p
