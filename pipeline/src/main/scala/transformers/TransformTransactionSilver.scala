@@ -64,6 +64,20 @@ class TransformTransactionSilver(
           .cast(DecimalType(10, 2))
       );
     transaction = TransformUtils.normalizePhoneNumber(transaction);
+    // If customer_id is null (walk-in via phone only), we flag it so Main can extract it.
+    // We then generate a random UUID for the customer_id as requested.
+    transaction = transaction
+      .withColumn(
+        "is_new_customer",
+        col("customer_id").isNull
+      )
+      .withColumn(
+        "customer_id",
+        coalesce(
+          col("customer_id"),
+          md5(concat(col("phone_number"), current_date()))
+        )
+      );
     return transaction;
   }
 
@@ -104,9 +118,8 @@ class TransformTransactionSilver(
             "quantity",
             "total_amount"
           )
-        )
+        ).alias("transaction_log")
       )
-      .alias("events")
     return finalDf;
   }
 

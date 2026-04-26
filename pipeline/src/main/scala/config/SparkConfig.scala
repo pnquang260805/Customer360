@@ -23,6 +23,8 @@ class SparkConfig(master : String, appName : String = "pipeline"){
                 .set("spark.hadoop.fs.s3a.threads.max", "256")
                 .set("spark.hadoop.fs.s3a.impl.disable.cache", "true")
                 .set("spark.hadoop.fs.automatic.close", "false")
+                .set("hoodie.metadata.enable", "false")
+                .set("hoodie.datasource.hive_sync.enable", "false")
     }
 
     def getConf() : SparkConf = {

@@ -37,12 +37,12 @@ class TransformCustomerSilver extends Transform {
     explodedDf = explodedDf.withColumn("phone_number", regexp_replace(col("phone_number"), "[\\(\\)\\s\\-]", ""))
       .withColumn("phone_number", regexp_replace(col("phone_number"), "^\\+84", "0"))
 
-    var droppedCustomer: DataFrame = explodedDf;
-    var finalDf: DataFrame = droppedCustomer
+    var finalDf: DataFrame = explodedDf
       .withColumn("date_of_birth", from_unixtime(col("date_of_birth") * 86400, "yyyy-MM-dd").cast("date"))
-      .withColumn("creation_date", from_unixtime(col("creation_date") * 86400, "yyyy-MM-dd").cast("date"))
-      .withColumn("customer_sk", uuid().cast("string"))
-      .drop("address");
+      .withColumn("customer_creation_date", from_unixtime(col("creation_date") * 86400, "yyyy-MM-dd").cast("date"))
+      .drop("address")
+      .drop("op")
+      .drop("creation_date");
     return finalDf;
   }
 

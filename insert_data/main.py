@@ -92,7 +92,8 @@ def insert_transaction(n):
     products = [{"product_id": x[0], "product_name": x[1], "price": x[2]} for x in cur.fetchall()]
 
     def gen_data():
-        i = random.randint(0, 2)
+        # i = random.randint(0, 2)
+        i = 1
         
         # --- LUÔN CHỌN SẢN PHẨM TRƯỚC ---
         p = random.choice(products)

@@ -17,6 +17,8 @@ class HudiService(spark: SparkSession) {
     spark.sql(query);
   }
 
+  // ── RAW LAYER ─────────────────────────────────────────────────────────────
+
   def createRawTable(
       dbName: String,
       tableName: String,
@@ -35,6 +37,8 @@ class HudiService(spark: SparkSession) {
         """
     spark.sql(query)
   }
+
+  // ── SILVER LAYER (Cleansed — no SCD2 fields) ─────────────────────────────
 
   def createSilverTransaction(
       dbName: String,
@@ -73,6 +77,65 @@ class HudiService(spark: SparkSession) {
     var query: String =
       s"""
             CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                customer_id STRING,
+                first_name STRING,
+                last_name STRING,
+                gender STRING,
+                date_of_birth DATE,
+                email STRING,
+                phone_number STRING,
+                country STRING,
+                customer_creation_date DATE
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'customer_id',
+                precombineField = 'customer_creation_date'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """
+    spark.sql(query)
+  }
+
+  def createSilverProduct(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
+    var query: String =
+      s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                product_id STRING,
+                product_name STRING,
+                product_link STRING,
+                price DECIMAL(10, 2),
+                base_price DECIMAL(10, 2),
+                currency STRING,
+                sale_percents STRING,
+                product_type STRING
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'product_id',
+                precombineField = 'product_id'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """
+    spark.sql(query)
+  }
+
+  // ── GOLD LAYER (Star Schema with SCD2) ────────────────────────────────────
+
+  def createGoldDimCustomer(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
+    var query: String =
+      s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
                 customer_sk STRING,
                 customer_id STRING,
                 first_name STRING,
@@ -82,7 +145,7 @@ class HudiService(spark: SparkSession) {
                 email STRING,
                 phone_number STRING,
                 country STRING,
-                creation_date DATE,
+                customer_creation_date DATE,
                 effective_date DATE,
                 expired_date DATE,
                 is_current BOOLEAN
@@ -91,12 +154,103 @@ class HudiService(spark: SparkSession) {
             TBLPROPERTIES (
                 type = 'mor', -- Merge on read
                 primaryKey = 'customer_sk',
-                precombineField = 'creation_date'
+                precombineField = 'effective_date'
             )
             LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
         """
     spark.sql(query)
   }
+
+  def createGoldDimProduct(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
+    var query: String =
+      s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                product_sk STRING,
+                product_id STRING,
+                product_name STRING,
+                product_link STRING,
+                price DECIMAL(10, 2),
+                base_price DECIMAL(10, 2),
+                currency STRING,
+                sale_percents STRING,
+                product_type STRING,
+                effective_date DATE,
+                expired_date DATE,
+                is_current BOOLEAN
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'mor', -- Merge on read
+                primaryKey = 'product_sk',
+                precombineField = 'effective_date'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """
+    spark.sql(query)
+  }
+
+  def createDimDate(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
+    var query: String =
+      s"""
+            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+                date_key INT,
+                date DATE,
+                year INT,
+                month INT,
+                day INT,
+                day_of_week INT,
+                quarter INT
+            )
+            USING hudi
+            TBLPROPERTIES (
+                type = 'cow',
+                primaryKey = 'date_key',
+                precombineField = 'date_key'
+            )
+            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+        """
+    spark.sql(query)
+  }
+
+  def createFactTransaction(
+      dbName: String,
+      tableName: String,
+      location: String
+  ): Unit = {
+    var query: String =
+      s"""
+    CREATE TABLE IF NOT EXISTS $dbName.$tableName (
+        transaction_sk STRING,
+        date_key INT,
+        customer_sk STRING,
+        customer_id STRING,
+        product_sk STRING,
+        transaction_id STRING,
+        unit_sales_price DECIMAL(10,2),
+        quantity DECIMAL(10,2),
+        total_amount DECIMAL(10, 2),
+        time_stamp TIMESTAMP
+    )
+    USING hudi
+    TBLPROPERTIES (
+        type = 'mor', -- Merge on read
+        primaryKey = 'transaction_sk',
+        precombineField = 'time_stamp'
+    )
+    LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
+    """
+    spark.sql(query)
+  }
+
+  // ── STREAM OPERATIONS ─────────────────────────────────────────────────────
 
   def writeStream(
       df: DataFrame,
@@ -146,38 +300,6 @@ class HudiService(spark: SparkSession) {
     return streamDf;
   }
 
-  def createDimProduct(
-      dbName: String,
-      tableName: String,
-      location: String
-  ): Unit = {
-    var query: String =
-      s"""
-            CREATE TABLE IF NOT EXISTS $dbName.$tableName (
-                product_sk STRING,
-                product_id STRING,
-                product_name STRING,
-                product_link STRING,
-                price DECIMAL(10, 2),
-                base_price DECIMAL(10, 2),
-                currency STRING,
-                sale_percents STRING,
-                product_type STRING,
-                effective_date DATE,
-                expired_date DATE,
-                is_current BOOLEAN
-            )
-            USING hudi
-            TBLPROPERTIES (
-                type = 'mor', -- Merge on read
-                primaryKey = 'product_sk',
-                precombineField = 'effective_date'
-            )
-            LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
-        """
-    spark.sql(query)
-  }
-
   def createView(viewName: String, tableName: String): Unit = {
     spark.sql(s"""
             CREATE OR REPLACE VIEW $viewName AS
@@ -193,32 +315,5 @@ class HudiService(spark: SparkSession) {
       datalakeConf.rawTable,
       s"s3a://${configVars.BUCKET}/bronze/raw_table/"
     );
-  }
-
-  def createFactTransaction(
-      dbName: String,
-      tableName: String,
-      location: String
-  ): Unit = {
-    var query: String =
-      s"""
-    CREATE TABLE IF NOT EXISTS $dbName.$tableName (
-        transaction_sk STRING,
-        customer_sk STRING,
-        product_sk STRING,
-        price DECIMAL(10,2),
-        quantity DECIMAL(10,2),
-        total_amount DECIMAL(10, 2),
-        timestamp DATE
-    )
-    USING hudi
-    TBLPROPERTIES (
-        type = 'mor', -- Merge on read
-        primaryKey = 'transaction_sk',
-        precombineField = 'timestamp'
-    )
-    LOCATION '$location' -- External table: table stored in S3 with prop "LOCATION"
-    """
-    spark.sql(query)
   }
 }

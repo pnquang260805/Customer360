@@ -53,6 +53,7 @@ class MongoDbService(spark: SparkSession) {
       .option("spark.mongodb.connection.uri", connectionString)
       .option("spark.mongodb.database", database)
       .option("spark.mongodb.collection", collection)
+      .option("partitioner", "com.mongodb.spark.sql.connector.read.partitioner.SinglePartitionPartitioner")
       .schema(schema)
       .load()
   }

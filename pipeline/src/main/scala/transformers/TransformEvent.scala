@@ -26,7 +26,7 @@ class TransformEvent {
         var finalDf : DataFrame = explodedDf.withWatermark("time_stamp", "5 minutes") // stream aggregate cần watermark
                                             .groupBy("customer_id").agg(collect_list(
                                                 struct("event_id", "type", "url", "time_stamp")
-                                            )).alias("events")
+                                            ).alias("activity_log"))
 
         return finalDf;
     }

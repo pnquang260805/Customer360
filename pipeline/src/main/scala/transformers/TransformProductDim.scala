@@ -11,22 +11,6 @@ import utils.TransformUtils
 
 class TransformProductSilver extends Transform {
 
-  // ── UDF decode Debezium DECIMAL (Base64 → BigDecimal) ─────────────────────
-  // Debezium encode kiểu DECIMAL(10,2) của PostgreSQL thành:
-  //   - unscaledValue: big-endian signed bytes → encode Base64
-  //   - scale được biết trước từ schema (ở đây là 2)
-  // Ví dụ: price=800.00 → unscaled=80000 → bytes=[0x01,0x38,0x80] → Base64="ATiA"
-  // private val SCALE = 2
-
-  // private val decodeDecimalUdf: UserDefinedFunction = udf[java.math.BigDecimal, String]((base64Str: String) => {
-  //   if (base64Str == null) null.asInstanceOf[java.math.BigDecimal]
-  //   else {
-  //     val bytes      = Base64.getDecoder.decode(base64Str)
-  //     val unscaled   = new BigInteger(bytes)           // big-endian signed
-  //     new BigDecimal(unscaled, SCALE)
-  //   }
-  // })
-
   def stgSilver(rawDf: DataFrame): DataFrame = {
 
     // price và base_price là StringType vì Debezium gửi dạng Base64
@@ -56,12 +40,12 @@ class TransformProductSilver extends Transform {
       .select(col("cdc.after.*"))
       .filter(col("product_id").isNotNull) // bỏ CDC delete (after = null)
 
-    // Bước 3: decode Base64 → DECIMAL, cast product_id, thêm product_sk
+    // Bước 3: decode Base64 → DECIMAL, cast product_id
+    // No product_sk — that belongs in Gold layer
     explodedDf
       .withColumn("product_id",   col("product_id").cast(StringType))
       .withColumn("price",        TransformUtils.decodeDecimalUdf(col("price")))
       .withColumn("base_price",   TransformUtils.decodeDecimalUdf(col("base_price")))
-      .withColumn("product_sk",   uuid().cast(StringType))
   }
 
   def stgGold(silverDf: DataFrame): DataFrame = null
