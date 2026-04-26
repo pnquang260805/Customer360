@@ -1,6 +1,5 @@
 package services
 
-import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SaveMode

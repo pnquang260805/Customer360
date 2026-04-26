@@ -1,6 +1,4 @@
 package services
-
-import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.sql.DataFrame
 
 import java.time.LocalDate
@@ -25,7 +23,8 @@ class SqlStreamService {
 
   def mergeCustomerDim(customerDf: DataFrame, customerTable: String): Unit = {
     var customerTempView: String = s"customerStg";
-    val batchProcess: (DataFrame, Long) => Unit = (batchDf: DataFrame, batchId: Long) => {
+    val batchProcess: (DataFrame, Long) => Unit =
+      (batchDf: DataFrame, batchId: Long) => {
         // val customerIds = batchDf.select("customer_id").distinct().collect().map(r => s"'${r.getString(0)}'").mkString(",")
         val mergeQuery: String =
           s"""
@@ -66,17 +65,21 @@ class SqlStreamService {
         batchDf.sparkSession.sql(insertQuery);
         print("============Merge to customer=============")
 
-    };
+      };
     customerDf.writeStream
       .foreachBatch(batchProcess)
       .outputMode("update")
-      .option("checkpointLocation", s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/customer_silver")
+      .option(
+        "checkpointLocation",
+        s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/customer_silver"
+      )
       .start();
   }
 
   def mergeProductDim(productDf: DataFrame, productTable: String): Unit = {
     var productTempView: String = "productStg";
-    val batchProcess: (DataFrame, Long) => Unit = (batchDf: DataFrame, batchId: Long) => {
+    val batchProcess: (DataFrame, Long) => Unit =
+      (batchDf: DataFrame, batchId: Long) => {
 
         val mergeQuery: String =
           s"""
@@ -114,20 +117,23 @@ class SqlStreamService {
         batchDf.sparkSession.sql(insertQuery);
         print("=========Merge to product============")
 
-    };
+      };
 
     productDf.writeStream
       .foreachBatch(batchProcess)
       .outputMode("update")
-      .option("checkpointLocation", s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/dim_product")
+      .option(
+        "checkpointLocation",
+        s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/dim_product"
+      )
       .start();
 
   }
 
   def insertTransaction(df: DataFrame, table: String): Unit = {
     var tempView: String = "transactionStg";
-    val batchProcess: (DataFrame, Long) => Unit = (batchDf: DataFrame, batchId: Long) => {
-
+    val batchProcess: (DataFrame, Long) => Unit =
+      (batchDf: DataFrame, batchId: Long) => {
 
         val insertQuery =
           s"""INSERT INTO ${table}
@@ -147,12 +153,15 @@ class SqlStreamService {
         batchDf.sparkSession.sql(insertQuery);
         print("=========INSERT TO TRANSACTION============")
 
-    };
+      };
 
     df.writeStream
       .foreachBatch(batchProcess)
       .outputMode("update")
-      .option("checkpointLocation", s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/transaction")
+      .option(
+        "checkpointLocation",
+        s"s3a://${configVars.CHECKPOINT_BUCKET}/${configVars.CHECKPOINT_FOLDER}/transaction"
+      )
       .start();
 
   }
