@@ -96,7 +96,7 @@ class TransformFactTransaction(spark: SparkSession) {
         "customer_sk",
         coalesce(
           col("customer_sk"),
-          lit("Unknown")
+          md5(concat(col("customer_id"), to_date(col("timestamp")).cast(StringType)))
         )
       )
       // WARNING: Do NOT use expr("uuid()") here either!
@@ -104,7 +104,7 @@ class TransformFactTransaction(spark: SparkSession) {
         "product_sk",
         coalesce(
           col("product_sk"),
-          lit("Unknown")
+          md5(concat(col("product_id"), to_date(col("timestamp")).cast(StringType)))
         )
       )
       .select(

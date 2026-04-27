@@ -166,14 +166,15 @@ object Main extends App {
   // Extract unknown customers from transaction and create new customer records
   var unknownCustomers = stgTransaction
     .filter(col("is_new_customer") === true)
-    .select("customer_id", "phone_number")
+    .select("customer_id", "phone_number", "timestamp")
     .withColumn("first_name", lit("Unknown"))
     .withColumn("last_name", lit("Unknown"))
     .withColumn("gender", lit("Unknown"))
     .withColumn("date_of_birth", lit(null).cast("date"))
     .withColumn("email", lit("Unknown"))
     .withColumn("country", lit("Unknown"))
-    .withColumn("customer_creation_date", current_date())
+    .withColumn("customer_creation_date", to_date(col("timestamp")))
+    .drop("timestamp")
 
   var combinedCustomerSilver =
     stgCustomerSilver.unionByName(unknownCustomers, allowMissingColumns = true)

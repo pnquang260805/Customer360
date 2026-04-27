@@ -307,7 +307,7 @@ class SqlStreamService {
             md5(
               concat(
                 col("customer_id"),
-                current_date().cast(StringType)
+                to_date(col("timestamp")).cast(StringType)
               )
             ).alias("customer_sk"),
             col("customer_id"),
@@ -318,7 +318,7 @@ class SqlStreamService {
             lit(null).cast(DateType).alias("date_of_birth"),
             lit("Unknown").alias("email"),
             lit("Unknown").alias("country"),
-            current_date().alias("customer_creation_date")
+            to_date(col("timestamp")).alias("customer_creation_date")
           )
 
         if (!newCustomers.isEmpty) {
@@ -336,7 +336,7 @@ class SqlStreamService {
           SELECT
             customer_sk, customer_id, first_name, last_name, gender,
             date_of_birth, email, phone_number, country, customer_creation_date,
-            current_date()             AS effective_date,
+            customer_creation_date     AS effective_date,
             CAST('9999-12-31' AS DATE) AS expired_date,
             true                       AS is_current
           FROM newCustStg
@@ -396,9 +396,28 @@ class SqlStreamService {
           .withColumn("transaction_sk", expr("uuid()"))
           .withColumn(
             "customer_sk",
-            coalesce(col("customer_sk"), lit("Unknown"))
+            coalesce(
+              col("customer_sk"),
+              md5(
+                concat(
+                  col("customer_id"),
+                  to_date(col("timestamp")).cast(StringType)
+                )
+              )
+            )
           )
-          .withColumn("product_sk", coalesce(col("product_sk"), lit("Unknown")))
+          .withColumn(
+            "product_sk",
+            coalesce(
+              col("product_sk"),
+              md5(
+                concat(
+                  col("product_id"),
+                  to_date(col("timestamp")).cast(StringType)
+                )
+              )
+            )
+          )
           .select(
             col("transaction_sk"),
             col("date_key"),
