@@ -58,4 +58,4 @@ docker exec -it master bash
 ```
 
 ## Lưu ý
-Schema cho các bảng sẽ được thêm sau
+Đọc thêm `project_flow.md` để biết thêm chi tiết
