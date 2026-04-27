@@ -119,6 +119,18 @@ val combinedRawDf = customerStreamDf.union(productStreamDf).union(eventStreamDf)
 
 The combined stream is written **as-is** to Hudi (MOR) at `s3a://tables/bronze/raw_table/`. This is the **immutable audit log** — zero transformation.
 
+```mermaid
+erDiagram
+    raw_table {
+        string key "Table name (customer/product/transaction/event)"
+        string value "Raw JSON CDC payload"
+        string topic "Kafka topic source"
+        int partition "Kafka partition"
+        long offset "Kafka offset"
+        timestamp timestamp "Ingestion time"
+    }
+```
+
 ---
 
 ### 4.3 Silver — Cleaned Data (No Surrogate Keys)
@@ -138,7 +150,21 @@ flowchart LR
     G --> H[silver_customer table]
 ```
 
-Schema: `customer_id, first_name, last_name, gender, date_of_birth, email, phone_number, country, creation_date`
+**Schema:**
+```mermaid
+erDiagram
+    silver_customer {
+        string customer_id
+        string first_name
+        string last_name
+        string gender
+        date date_of_birth
+        string email
+        string phone_number
+        string country
+        date customer_creation_date
+    }
+```
 
 Also written to **MongoDB Atlas** for real-time customer lookup.
 
@@ -156,7 +182,20 @@ flowchart LR
     F --> G[silver_product table]
 ```
 
-Schema: `product_id, product_name, product_link, price, base_price, currency, sale_percents, product_type`
+**Schema:**
+```mermaid
+erDiagram
+    silver_product {
+        string product_id
+        string product_name
+        string product_link
+        decimal price
+        decimal base_price
+        string currency
+        string sale_percents
+        string product_type
+    }
+```
 
 ---
 
@@ -172,7 +211,24 @@ flowchart LR
     F --> G[silver_transaction table]
 ```
 
-Schema: `transaction_id, customer_id, product_id, phone_number, product_name, price, quantity, total_amount, event_time, source, timestamp`
+**Schema:**
+```mermaid
+erDiagram
+    silver_transaction {
+        string transaction_id
+        string customer_id
+        string product_id
+        string phone_number
+        string product_name
+        decimal price
+        decimal quantity
+        decimal total_amount
+        timestamp event_time
+        string source
+        timestamp timestamp
+        boolean is_new_customer
+    }
+```
 
 Also runs a **resolve step**: joins with MongoDB customer lookup → writes enriched transactions to MongoDB for 360 profiles.
 
@@ -189,18 +245,59 @@ Both dimension tables are derived **from their silver counterparts** via `SqlStr
 
 #### `dim_customer`
 
-| Column | Type | Notes |
-|---|---|---|
-| `customer_sk` | STRING | Surrogate key (UUID), **primary key** |
-| `customer_id` | STRING | Natural key from source |
-| `first_name` … `country` | various | Copied from silver_customer |
-| `effective_date` | DATE | When this version became active |
-| `expired_date` | DATE | When this version was superseded (9999-12-31 if current) |
-| `is_current` | BOOLEAN | `true` for the latest version |
+```mermaid
+erDiagram
+    dim_customer {
+        string customer_sk PK
+        string customer_id "Natural key"
+        string first_name
+        string last_name
+        string gender
+        date date_of_birth
+        string email
+        string phone_number
+        string country
+        date customer_creation_date
+        date effective_date
+        date expired_date
+        boolean is_current
+    }
+```
 
 #### `dim_product`
 
-Same SCD2 pattern with `product_sk` as surrogate key, derived from `silver_product`.
+```mermaid
+erDiagram
+    dim_product {
+        string product_sk PK
+        string product_id "Natural key"
+        string product_name
+        string product_link
+        decimal price
+        decimal base_price
+        string currency
+        string sale_percents
+        string product_type
+        date effective_date
+        date expired_date
+        boolean is_current
+    }
+```
+
+#### `dim_date`
+
+```mermaid
+erDiagram
+    dim_date {
+        int date_key PK "YYYYMMDD"
+        date date
+        int year
+        int month
+        int day
+        int day_of_week
+        int quarter
+    }
+```
 
 ---
 
@@ -224,28 +321,55 @@ flowchart TD
     J --> K[Write to fact_transaction via Hudi]
 ```
 
-**Final `fact_transaction` schema:**
+**Final Star Schema:**
 
-| Column | Type | Source |
-|---|---|---|
-| `transaction_sk` | STRING | Generated UUID |
-| `customer_sk` | STRING | From dim_customer (existing or auto-created) |
-| `product_sk` | STRING | From dim_product |
-| `price` | DECIMAL(10,2) | From transaction |
-| `quantity` | DECIMAL(10,2) | From transaction |
-| `total_amount` | DECIMAL(10,2) | From transaction |
-| `timestamp` | DATE | From transaction ts_ms |
+```mermaid
+erDiagram
+    fact_transaction {
+        string transaction_sk PK
+        int date_key FK
+        string customer_sk FK
+        string product_sk FK
+        string customer_id
+        string transaction_id
+        decimal unit_sales_price
+        decimal quantity
+        decimal total_amount
+        timestamp time_stamp
+    }
+    fact_transaction }|--|| dim_customer : customer_sk
+    fact_transaction }|--|| dim_product : product_sk
+    fact_transaction }|--|| dim_date : date_key
+```
 
 > [!IMPORTANT]
 > `customer_sk` is **never null** in the fact table. If an in-store customer doesn't exist in dim_customer, a minimal record is auto-created with only `customer_id`, `customer_sk`, and `phone_number` populated. Other fields remain NULL until the customer registers.
 
 ---
 
-### 4.6 Events → MongoDB
+### 4.6 Events & Unified Profiles → MongoDB
 
-#### [TransformEvent.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformEvent.scala)
+#### [TransformEvent.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformEvent.scala) & [TransformUnifiedProfile.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformUnifiedProfile.scala)
 
-Clickstream events are grouped by `customer_id` using `collect_list` and written directly to **MongoDB Atlas** for real-time 360 profile enrichment. No Hudi/S3 storage for events.
+Clickstream events and transactions are aggregated by `customer_id` and written to **MongoDB Atlas** to create a single **Unified Customer Profile**.
+
+**Unified Profile Schema (MongoDB):**
+
+```mermaid
+erDiagram
+    unified_profile {
+        string master_id PK "customer_id"
+        string first_name
+        string last_name
+        string gender
+        date date_of_birth
+        array transaction_log
+        array activity_log
+    }
+```
+
+> [!NOTE]
+> `transaction_log` contains an array of recent purchases (id, price, quantity, total), and `activity_log` contains clickstream events (id, type, url, timestamp).
 
 ---
 
@@ -272,28 +396,7 @@ Clickstream events are grouped by `customer_id` using `collect_list` and written
 
 ---
 
-## 7. Complete File Map
-
-| File | Layer | Purpose |
-|---|---|---|
-| [main.py](file:///e:/Mine/Code/Customer360/insert_data/main.py) | Source | Faker data generator → PostgreSQL |
-| [Main.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/Main.scala) | Orchestration | Wires everything together |
-| [ExtractKafka](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/extractors) | Extract | Kafka → Spark Streaming |
-| [TransformCustomerSilver.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformCustomerSilver.scala) | Silver | Raw CDC → cleaned customer |
-| [TransformProductDim.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformProductDim.scala) | Silver | Raw CDC → cleaned product |
-| [TransformTransactionSilver.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformTransactionSilver.scala) | Silver | Raw CDC → cleaned transaction |
-| [TransformEvent.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformEvent.scala) | Silver | Raw CDC → grouped events → MongoDB |
-| [TransformFactTransaction.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/transformers/TransformFactTransaction.scala) | Gold | Silver transaction → fact with SK lookups |
-| [SqlStreamService.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/services/SqlStreamService.scala) | Service | Silver upsert + SCD2 dim merge logic |
-| [HudiService.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/services/HudiService.scala) | Service | Table DDL + Hudi write streams |
-| [MongoDbService.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/services/MongoDbService.scala) | Service | MongoDB read/write |
-| [DatalakeConfig.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/config/DatalakeConfig.scala) | Config | Table/DB name mappings |
-| [ConfigVariables.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/config/ConfigVariables.scala) | Config | S3, Kafka, MongoDB connection strings |
-| [TransformUtils.scala](file:///e:/Mine/Code/Customer360/pipeline/src/main/scala/utils/TransformUtils.scala) | Utility | Base64 decode UDF, phone normalization |
-
----
-
-## 8. End-to-End Summary
+## 7. End-to-End Summary
 
 ```
 PostgreSQL (4 tables)
